@@ -1,0 +1,277 @@
+
+Yonatan
+Nice work! It seems like explanations here are based on attention weights, right?
+You might want to take into account recent concerns regarding using attention as explanation,
+such as the following papers: “Attention is not explanation”, “Attention is not not explanation”,
+“Is attention interpretable”.
+
+************************************************************************************************************************
+
+Rafał
+Great feedback! I’ve read and added more related ref (also your survey).
+I have concerns too but... I don’t use attentions directly.
+Quick recap:
+- transformer encoder (BERT)
+- linear classifier, projection of the final CLS token representation
+- filter out attentions using gradients (with respect to the prediction)
+- sum it over heads and layers
+- get the matrix (n, n) where n is the word seq length
+  (merge subtokens as in Clark et al. - what does BERT look at)
+We know that:
+a classifier uses only a single CLS vector
+a massive number of patterns are used to build the CLS token repr.
+Intuition:
+the matrix rows represent approx. how each word “attend to”
+they represents patterns, useful in a prediction relations
+they are overlapped but we can roughly assume that
+the firs raw (CLS token) refers to pattern indices,
+and that’s it
+Please correct me if I am wrong.
+Do you have any suggestions? If it’s not clear, I try to explain it once again.
+
+************************************************************************************************************************
+
+Yonatan
+Thanks for the explanation. This sounds reasonable. The concerns in those papers
+I stated might still hold though, namely that there may be alternative attention
+distributions and that the attention explanations don’t always align with
+gradient-based attributions.
+“- filter out attentions using gradients (with respect to the prediction) ”
+- this sounds interesting. can you say a bit more about this?
+
+************************************************************************************************************************
+
+Rafał
+Just gradient-attention products:
+(α*dα).sum(axis=[0, 1])
+where α shape [layer, head, n, n]
+We agree that:
+- alternative attention distributions can exist
+- correctness of the alignment (grad/attentions) is questionable
+- the attention-based interpretation just generates "potential pattern candidates"
+- attentions encode several linguistic notions
+Please correct me if somewhere is a disagreement.
+Therefore if we experiment with attention-based patterns,
+we need to estimate a confidence how they are reliable.
+Next steps:
+Similar analysis to the mentioned "Is Attention Interpretable?"
+Aim: how my proposed heuristic actually works
+Detailed description how I organize experiments is below.
+With results, I will back to you.
+
+************************************************************************************************************************
+
+Yonatan
+This seems reasonable and reminds me of feature attribution methods based
+on word embeddings, where often you take the dot product of the word embedding
+and its gradient. Would be interesting to see how the gradient product step
+changes the attention maps.
+
+************************************************************************************************************************
+
+Dear Yonatan,
+
+you have asked for evidence that the proposed pattern
+recognizer works correctly.
+I have made a step toward, but it is still crude reasoning.
+There is the agreement that we wish to have an accurate pattern recognizer which tells us at least:
+"This single token changes a model prediction the most."
+
+Briefly, in ABSA, we exclusively use the final CLS embedding.
+The CLS emb. carries all needed information to classify an example,
+and only attentions define how this vector looks like.
+
+To probe a model, we need a pattern recognizer
+which should indicate the most crucial token at least.
+It could be a separate model, but for now, we formulate heuristics.
+Let's examine four basic recognizers:
+- the sum of attentions: P = α.sum(axis=0, 1)
+- the sum of gradients: P = ∂α.sum(axis=0, 1)
+- the sum of attention-gradient products: P = (α * ∂α).sum(axis=0, 1)
+- the sum of absolute attention-gradient products
+over model layers and heads.
+These methods produce the matrix P of the size (n, n),
+where the n equals the length of:
+    [CLS] text tokens [SEP] aspect tokens [SEP]
+According to the point above that the CLS token has encoded
+all needed information to make a prediction,
+the intuition is that the first row of the matrix P describes
+how each token affect the CLS token.*
+We assume that the token with the strongest influence
+on the CLS token is the key token.
+
+Alike in suggested papers, to evaluate presented heuristics,
+we mask the key token, and measure: if a decision is flip,
+and JS divergence of class distributions.
+To have a reference, we compare these methods to random selection.
+
+Before we go further, I wish to throw light on two issues.
+Firstly, the proper model calibration is crucial.
+Secondly, it is not obvious how to predict without the predicted key token correctly.
+There are many options, for instance:
+a) change the key token to the <mask> token in the input sequence
+b) remove the key token from the input sequence
+c) zero out attentions vertically, and then re-normalize each row (L1 norm)
+d) zero out attentions horizontally
+Here, we used the *method a)* because it seems to be the most reliable.
+Method b) causes changes in a sentence structure.
+Method c) inject too much noise due to skew angels between hidden states (even without re-normalization).
+Method d) not erase the key token on first layers due to residual connections.
+What's interesting, slight attention manipulations cause weird behaviors.
+
+Finally, I present evaluation results (SemEval2014, restaurants, 300 pos/neg examples).
+
+Confusion Matrix: Binary Decision Flip (1-confusion_matrix.png)
+- many requires to mask more than one token
+- proposed attention-gradient product is much better than
+  random selection or direct attentions, 12 and 26 versus 56
+- there are rather few examples, random: Yes method: No, where the random
+  selection is more effective. These samples are close to the boundary decision,
+  and, in consequence, a randomly selected token is enough to overbalance a model decision.
+
+Scatter Plot: Correlation between ΔRecognizerVariable and ΔJS (2-scatter.png)
+- attention-gradient recognizers are more accurate,
+  however, still there is no clear relation.
+- most masked tokens do not affect a model prediction (close to zero)
+  regardless of the chosen method.
+
+Density Plot: ΔMasked Tokens between Pattern Recognizers and Random Selection (3-densities.png)
+(iteratively mask the next most important key token)
+- attention-gradient methods are slightly shifted to the right, but still,
+  there are many examples wherein random selection is more effective.
+- the gradient method is close to random.
+
+Thanks to your feedback and this analysis,
+I have found many weaknesses in both the model and pattern recognizers.
+Immediately after I fix them, I will come back with an in-depth analysis.
+Please tell me if you have any suggestions.
+I tried to be concrete and concise as much as I can, therefore,
+if I miss something, with pleasure, I can describe it further in detail.
+
+*
+Note that this is a rough approximation,
+because both CLS token and text tokens are changing throughout model layers.
+The presented first row of the matrix P refers to word mixtures,
+final token representations, rather than naive token emb. as at the beginning.
+
+************************************************************************************************************************
+
+Yonatan
+Thanks for sharing all this!
+One quick thought is the contribution of multiple tokens or higher order interactions of tokens.
+Do you take this into account?
+What are the implications of greedily choosing the maximum flipping token?
+Is this missing potentially better sunsets of tokens?
+All this sounds like a subset selection problem with (maybe) submodular structure?
+I’ll need to go through the plots more closely at a later time.
+
+BTW, is this a good/established way to do aspect-based sentiment analysis with transformers?
+[CLS] text tokens [SEP] aspect tokens [SEP] ?
+
+More thoughts on the plots:
+Are the confusion matrix differences statistically significant?
+Anything that’s off the no-no cell seems very small, especially the bottom row numbers.
+The lack of correlation is a bit troubling, right?
+I wonder if JS is the best measure, since it’s a soft measure.
+But I guess the confusion matrix is the hard version, and that too is inconclusive off the no-no cell.
+How is \Delta Masked calculated?
+
+************************************************************************************************************************
+
+Dear Yonatan,
+
+Formulating the problem as the text pair classification is simple, and gives close to SOTA results,
+especially using post-training (domain adaptation), and then sentiment fine-tuning [1,2,3].
+Nonetheless, the SemEval2014 dataset is tiny, has around 3/1k (train/test) examples,
+therefore, it's hard to say that reported evaluation results/papers are reliable.
+Due to concerns that these SOTA models are overfitted,
+one way to estimate if a model is broken or not is by explaining model decisions.
+A side note, there is an interesting black-box model testing framework, the CheckList [4].
+
+The higher-order interactions of tokens are unknown, yet.
+As you correctly noticed, iteratively choosing the maximum flipping token, ranking alike,
+might be misleading, because it naively assumes that there is no substructure.
+Regardless of questionable usefulness, I included densities of ΔMasked.
+Each plot represents the difference between the number of masks needed
+to flip a decision between presented heuristics and the random selection.
+
+This was an initial trial, so we limited the dataset (up to 300 pos/neg examples),
+but still, because ABSA datasets are small in general,
+it is hard to achieve statistically significant results.
+
+For now, to make this ABSA model analysis meaningful and go forward, we have two problems.
+Not only the evaluation dataset should be bigger, but also I have noticed that
+randomly removed the aspect coreference in many cases rapidly changes a decision.
+This is desired behavior, however now, it unnecessarily complicates a problem.
+To make our analysis more general, we can introduce the new <undefined> token,
+thus the input sequence looks like:
+    [CLS] text tokens [SEP] <undefined> [SEP]
+of examples from common sentiment datasets, like Amazon ratings.
+In consequence, we mix the fine- and course-grained sentiment classification.
+Thanks to the enhanced dataset,
+firstly, we can do a more precise analysis,
+and secondly, it can lead to more stable models.
+
+Alternatively, we can skip ABSA considerations, and focus on the vanilla sentiment classification,
+and go directly to building the explainer.
+In contrast to many variations of the local explanation, for instance, LIME, Anchors or SHAP,
+we wish to have the explainer which gives a prediction "a priori" without additional calls to the model,
+and observes not only model outputs but also internal states.
+Even if our goal is to provide rich and meaningful decision explanations,
+a good start is to master indicating the most important token.
+
+In contrast to further analyzing attentions or formulating elaborate heuristics,
+we introduce the key_token explainer as a separate model.
+The model `f` takes the input sequence `x`, and returns attentions `a`, and the output `y_hat`.*
+One can formulate an explainer as a proxy `g` which takes `a`,
+and tries to predict the distribution of token importance `s_hat`.
+To get a true vector `s` for the training purpose, we need to perturb input `x`, and make n predictions
+for the masked input seq. on each position `xm_i`.
+
+There is the other option, where an explainer is composed of a proxy `g` and a decoder `d`.
+The proxy `g` projects attentions `a` into a vector representation `h`.
+For training purposes, it also produces repr. `hm_i` derived from attentions of the masked input `xm_i`.
+The RNN decoder `d` tries to predict `hm_i` using the context of the last repr. `hm_i-1` and the unmasked repr. `h`.
+At each step i, `hm_i_hat` is projected into an importance score `s_i_hat`.
+As in many seq2seq problems, for inference, a decoder uses `hm_i-1_hat` instead of `hm_i-1`.
+
+Second approach provides more information/constrains to the explainer model.
+Rather than analysing the "static" picture of attentions captured by `h`,
+it can observe the variability of attentions.
+
+As I showed, we can go in different directions.
+I am curious if any of the presented research directions seem promising to you.
+Please give me references if similar work has been done already.
+
+
+* The explainer can use hidden states and partial derivatives as well.
+** The decoder architecture can be different but I wanted to present the basic form.
+
+[1] Utilizing BERT for Aspect-Based Sentiment Analysis via Constructing Auxiliary Sentence
+[2] BERT Post-Training for Review Reading Comprehension and Aspect-based Sentiment Analysis
+[3] Adapt or Get Left Behind: Domain Adaptation through BERT Language Model Finetuning for Aspect-Target Sentiment Classification
+[4] Beyond Accuracy: Behavioral Testing of NLP Models with CheckList
+
+************************************************************************************************************************
+
+Hi Rafal, thank you for the detailed explanations.
+
+Some thoughts:
+1. It seems to me like aspect-based sentiment analysis may be more interesting to explain,
+since (a) there’s a lot of work on explaining general sentiment analysis already
+and (b) ABSA seems more useful in practice to me. But I haven’t followed the sentiment analysis literature closely.
+
+2. I find the idea of mixing general and aspect-based data quite appealing. The <undefined> token is ad hoc,
+but if that works and hasn’t been done before, this seems like a nice new idea.
+
+3. Some work on explaining predictions intrinsically that I find attractive:
+https://arxiv.org/abs/1905.08160, https://arxiv.org/abs/2004.14992.
+the second one also looks at internal states.
+
+4. I like the idea of using perturbations to get real s for training the explainer,
+although there’s a potential problem their with having your real `s` depend on a particular trained model rather than on human labels.
+For instance, what if you use one model to create `s` but another to attach `g` to.
+Would a `g` trained on `s` created by model `f1` be able to explain decisions by model `f2`?
+
+5. I’m not sure I fully understand the second option, with the decoder.
+
