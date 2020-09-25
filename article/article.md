@@ -111,7 +111,7 @@ what is the language model, and why it makes a difference.
 The model is a function that maps the input to the desired output.
 Because this function is unknown, we try to approximate it using data.
 It is hard to build the clean and big enough, for NLP tasks in particular,
-dataset to train model directly in a supervised manner.
+dataset to train precise model directly in a supervised manner.
 Therefore, the basic approach to solve this problem, 
 and overcome the lack of a sufficient amount of data, 
 is to construct hand-crafted features which we treat as part of the model.
@@ -690,3 +690,273 @@ The adjustment is straightforward having the specification about constraints
 and the data stream that the service aims to process.
 
 <br>
+
+
+
+
+
+#### Introduction
+
+The Natural Language Processing is in the spotlight.
+This is mainly caused by the stunning capabilities of the modern language models.
+They transform text into meaningful vectors that approximate human text understanding,
+therefore, the computer programs can analyze texts (documents, mails, tweets etc.) roughly alike humans do.
+The language models fuel the NLP community to build many other, more precise models that
+aim to solve specific problems, for instance, the sentiment classification.
+The community build up the open-source projects that provide easy access to countless fine-tune models.
+Unfortunately, the usefulness of the majority of them is questionable in the real-world applications.
+
+<br>
+
+The ML models are powerful because they approximate the desired transformation,
+the mapping between the inputs and outputs, directly from data.
+By design, the model collects any correlations in data useful to make a correct mapping.
+This free of restrictions simple rule forms the complex model reasoning
+that enables to approximate any logic behind the transformation.
+It is the big advantage of the ML models, especially in cases wherein the transformation is intricate and vague.
+However, the free of restrictions process of forming the model reasoning is the major headache 
+at the same time because it is problematic to keep control of the model.
+
+```
+the production-ready model = the tested and monitored model behaviors
+```
+
+It is hard to force a model to capture a general problem (e.g. the sentiment classification).
+solely by asking for solving a task, the common evaluation task (e.g. SST-2) 
+or the custom-built task based on the labeled (sampled from production) data.
+This is because the model discovers any useful correlations, 
+no matter they describe well a general problem and make sense for humans
+or they are exclusively effective in solving a particular task.
+The correlations that encode dataset specifics cause the unpredictable model behavior
+on data even slightly different than used in a training.
+Due to this unpleasant nature of the ML models,
+we test and constantly monitor how the model behavior is consistent with the expected behavior.
+It is important because a model working in the real-world application is exposed to process changing in time data. 
+
+```
+circular gradient / polygon inside 
+left inside (green) right outside (red)
+healthy                            unhealthy
+consistent with the human logic    the bias in the reasoning
+--- true logic
+```
+
+
+
+
+
+
+compare two models of the given problem that have the same tests 
+bigger polygon means more tests
+more model reasoning inside the polygon, the better alignment
+the data augmentation explicitly center two alignments (injecting correct logic)
+
+
+
+
+We do not set up condition on the logic during training but we can do it after.
+The model has extreme complex logic due to freedom (maybe too big).
+We define the list of conditions about logic to have the boundaries of the logic.
+We have sure that there is a common sense - the model and the human
+The production-ready model fulfill these conditions, is in this boundaries.
+
+
+
+First... write tests.
+Second... explain model reasoning.
+discover new tests / weird behaviors
+We have only a prediction at our disposal.
+The application processes data that is changing in time.
+The model likely stops working 
+you do not know when it happens
+no rationales for a prediction
+excuse that you cannot explain the decisions of deep networks
+model weaknesses are completely hidden
+unpredictable behavior
+
+
+
+test-driven model development
+the aim is to build the stable model
+so reveal model limitations by doing 
+tests and explaining model decision
+you can improve a model
+and have a decision explanation
+investigation of the model behavior
+monitor model behaviour via approx. explanations
+
+
+```
+test -> explain -> develop
+```
+
+<br>
+
+in contrast to language models,
+it is problematic to build the open source project that provides "ready-to-use" fine-tune models.
+We show an exemplary case of well-known NLP task, the sentiment classification.
+Instead of doing the crude sentiment analysis, and making this article more business oriented,
+we do the sentiment classification under the aspect condition.
+provide a definition what the aspect-based mean
+clean up research papers extracting essence
+review the pipeline and model itself giving a context
+dive into explaining model decision
+interpret model decisions
+
+
+the open source project
+pipeline
+model
+model limitation
+professor
+rolf
+conclusions
+
+
+
+
+
+
+
+
+
+
+
+
+#### Conclusions
+
+
+THe model maps the input with the output without providing logic.
+We exclusively design what kind of transformations are allowed defining types and complexity.
+(avoiding e.g. necking and high sparse spaces that kill gradient)
+The network decide how this transformations look exactly.
+
+
+
+
+be careful interpreting evaluation results
+the steady test-driven model development
+it is a long way to build a proper model
+we recognize the model weaknesses
+
+papers gentle leave aside tests that may expose model limitations
+evaluation results often are misleading
+a model resolve a dataset
+
+the in-domain knowledge is hard to translate into the regular training
+
+the labeled sample of the production data is a proxy
+the hidden structures in data are likely changing
+
+The state-of-the-art models are adjusted to solve a particular evaluation dataset.
+
+
+
+
+
+
+
+
+#### Further Research
+
+the dataset should be diverse and balanced
+the model would be more stable
+
+
+we wish to test the new model architecture
+do not pretrain the language model
+the language model is an independent component
+it solely provides fixed word embeddings (similar [here])
+we can test effortlessly different language models 
+(embedding characteristics, inference time, size, type)
+text embeddings are related with the aspect
+they become independent
+we process several aspects at once 
+
+
+
+in tests, soft metrics are helpful too (e.g. the JS divergence between outputs)
+
+
+the project is open-source and you are welcome to contribute
+do not hesitate to create an issue on GitHub or write me directly
+
+
+
+
+
+
+
+
+
+
+
+
+
+#### Appendix A: Pattern Recognizers in Detail
+
+Basic Pattern Recognizer
+We believe that building heuristics is not so bad as commonly we think.
+The basic pattern recognizers...
+attention maps
+
+the product map: 
+P = (α * |∂α|).sum(axis=[0, 1])
+
+- first row 
+
+
+- link attentions with absolute gradients
+help estimating how sensitive is a model to changes / how an attention value is special
+this is a form of the estimation of a deviation from the expected value 
+(slightly refer to a gradient attribution)
+
+- sum over model layer and heads, and normalize by max value in each row
+there is no reason to favour some of them
+
+- fill diagonal with ones
+residual connections
+
+- normalize
+
+to select key tokens we sum scale by importance patterns
+
+
+```
+
+```
+
+
+#### Appendix B: Complexity of Model Reasoning
+
+
+1) compare base recognizer and the attention recognizer
+- two plots of laptops and restaurants
+```
+- the groud-truth / first two columns (light gray)
+- the base recognizer (green) 
+- the attention recognizer (dark gray)
+```
+
+2) split into classes (bias in a model)
+- either laptops or restaurant if both look similar
+- three plots (left combined originally) -> only positive and only negative (they should look similar)
+```
+- the groud-truth / first two columns (light gray)
+- the base recognizer (green) 
+```
+
+3) add a negative sentence about a different aspect (Test C)
+- either laptops or restaurant if both look similar
+```
+- the groud-truth / first two columns (light gray)
+- the base recognizer (green) 
+```
+
+
+
+#### References
+
+
+
+
