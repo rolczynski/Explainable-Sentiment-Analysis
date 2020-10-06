@@ -5,7 +5,7 @@
 
 The article aims to highlight the need for testing and explaining model behaviors.
 We published the open-source `aspect_based_sentiment_analysis` package where
-the key idea is to build the pipeline which supports explaining a model prediction.
+the key idea is to build the pipeline which supports explaining the model predictions.
 We introduce the independent component called the professor that supervises and explains model predictions.
 Even if the professor helps to correct severe limitations of the state-of-the-art models that initial tests reveal,
 the professor's main role is to provide explanations of model decisions that enhance control over the model.
@@ -17,8 +17,8 @@ and making models useful in the real-world applications.
 <br>
 
 Introduction
-Problem Definition
-Pipeline: Keep Process in Shape
+Definition of the Problem 
+Pipeline: Keeping the Process in Shape
 Model: Heart of Pipeline
 Awareness of Model Limitations
 Professor: Supervise Model Predictions
@@ -119,15 +119,14 @@ In this article, we focus on the aspect-based sentiment classification.
 <br>
 
 
-#### Problem Definition
+#### Definition of the Problem 
 
-The aim is to classify the sentiment of the text for several aspects.
-We have made several assumptions to make the service more reliable and useful.
-The processing text might be long, for instance, a full-length document.
-The aspect can contain several words so it may be defined more precisely.
-Moreover, the user is able to infer how much results are reliable
-because the service provides an approximate decision explanation.
-We will discuss it closely later on.
+The aim is to classify the sentiments of a text concerning given aspects.
+We have made several assumptions to make the service more helpful.
+Namely, the text being processed might be a full-length document,
+the aspects could contain several words (so may be defined more precisely),
+and most importantly, the service provides an approximate explanation of any decision made, 
+therefore, a user is able to immediately infer correctness of a prediction.
 
 ```python
 import aspect_based_sentiment_analysis as absa
@@ -141,38 +140,35 @@ assert price.sentiment == absa.Sentiment.negative
 assert slack.sentiment == absa.Sentiment.positive
 ```
 
-Above is an example how quickly you can start to benefit from our open-source package.
-The `load` function sets up the ready-to-use pipeline `nlp`.
-You can explicit pass a model name you wish to use (the list of available models is [here],
-or a path to your model.
-We encourage you to build your own model which reflects your data.
-The results will be more accurate and stable.
+Above is an example of how quickly you can start to benefit from our open-source package.
+All you need is to call the `load` function which sets up the ready-to-use pipeline `nlp`.
+You can explicitly pass the model name you wish to use (the list of available models is [here]), or a path to your model.
+In spite of simplicity of using fine-tuned models, we encourage you to build the custom model which reflects your data.
+The predictions will be more accurate and stable what we will discuss later on.
 
 <br>
 
 
-#### Pipeline: Keep Process in Shape
+#### Pipeline: Keeping the Process in Shape
 
-The pipeline provides an easy-to-use interface to make predictions. 
-The highly accurate model is useless if it is unclear how to correctly prepare the inputs
-and how to interpret the outputs. Therefore, to make things clear, we introduce the
-pipeline that is highly connected with the model type. In the previous example, we present
-how to start to work with a default pipeline. Nonetheless, to build both your own model
-and pipeline, it is worth to know how we face the problem in detail.
+The pipeline provides an easy-to-use interface for making predictions.
+Even a highly accurate model will be useless if it is unclear how to correctly prepare the inputs and how to interpret the outputs.
+Therefore, to make things clear, we have introduced a pipeline that is closely linked to the model type.
+It is worth knowing how to deal with the whole process, especially if you willing to build the custom model.
 
 ```
 pre-process -> predict -> review -> post-process
 ```
 
-The diagram above illustrates an overview how the pipeline works.
-At the very beginning, we convert the input, the text and aspects, into the `task`.
-The task keeps the well-prepared tokenized examples that we further encode and pass to the model.
-The fine-tuned model makes a prediction, and, instead of directly post-processing model outputs 
-and return results, we add one additional step which is optional.
-We introduce the review process wherein the `professor` verifies model predictions and reasoning
-to make the final decision.
-It might dismiss a model prediction if either the model reasoning or outputs seem to be suspicious.
-In the next sections, we will discuss how the model and professor work in detail.
+The diagram above illustrates an overview of the pipeline stages.
+As usual, at the very beginning, we pre-process the inputs.
+We convert the text and the aspects into the `task` which keeps well-prepared tokenized examples 
+that we can then further encode and pass to the model.
+The model makes a prediction, and here is a change.
+Instead of directly post-processing model outputs, we have added a review process wherein 
+the independent component called the `professor` supervises and explains the model predictions.
+The professor might dismiss a model prediction if the model internal states seem to be suspicious.
+In the next sections, we will discuss in detail how the model and the professor work.
 
 ````python
 import aspect_based_sentiment_analysis as absa
@@ -188,24 +184,20 @@ nlp = absa.Pipeline(model, tokenizer, professor, text_splitter)
 task = nlp.preprocess(text=..., aspects=...)
 input_batch = nlp.encode(task.tokenized_examples)
 output_batch = nlp.predict(input_batch)
-predictions = professor.make_decision(task, output_batch)
+predictions = nlp.review(task, output_batch)
 completed_task = nlp.postprocess(task, output_batch, predictions)
 ````
 
-Above is an example how to initialize the pipeline directly,
-and, to revise in code the process mentioned before, 
-we expose explicitly what calling the pipeline does.
-We try to omit many details of little account, 
-nonetheless, one thing we wish to highlight.
-The sentiment of a long text tends to be fuzzy and neutral. 
-Therefore, you might split a document text into smaller independent chunks, spans. 
-They can include a single sentence or several sentences.
-It depends how works the `text_splitter`. 
-In this case, we use the SpaCy CNN model which 
-splits a document into single sentences, and, in consequence,
-each sentence is processing independently.
-Note that longer spans have richer context information, 
-so a model has more insights to make a decision.
+Above is an example how to initialize the pipeline directly.
+We revise in code the discussed process by exposing what calling the pipeline does.
+We try to omit a lot of insignificant details but one thing we would like to highlight.
+The sentiment of long texts tends to be fuzzy and neutral. 
+Therefore, you might want to split a document text into smaller independent chunks, spans. 
+These could include a single sentence or several sentences.
+It depends on how the `text_splitter` works. 
+In this case, we are using the SpaCy CNN model, which splits a document into single sentences, 
+and, as a result each sentence can then be processed independently.
+Note that longer spans have richer context information, so a model has more information to consider.
 Please take a look at the pipeline details [here].
 
 <br>
