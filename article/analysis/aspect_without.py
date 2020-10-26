@@ -23,14 +23,16 @@ PRETRAINED_MODEL_NAMES = {
 
 def build_dataset(domain: str, unknown_token: str) -> Iterable[LabeledExample]:
     examples = absa.load_examples('semeval', domain, test=True)
-    # Remove the information about an aspect
-    # (change aspect to the special [UNK] token)
-    convert = lambda e: LabeledExample(e.text, unknown_token, e.sentiment)
-    dataset = map(convert, examples)
 
     # Process only positive/negative examples
     condition = lambda e: e.sentiment in [Sentiment.positive, Sentiment.negative]
-    dataset = filter(condition, dataset)
+    dataset = filter(condition, examples)
+
+    # Remove the information about an aspect
+    # (change aspect to the special [UNK] token)
+    convert = lambda e: LabeledExample(e.text, unknown_token, e.sentiment)
+    dataset = map(convert, dataset)
+
     return dataset
 
 
