@@ -1,6 +1,5 @@
 import os
 import logging
-import itertools
 import pathlib
 import random
 from typing import Iterable
@@ -30,19 +29,17 @@ def build_dataset(domain: str, seed: int) -> Iterable[LabeledExample]:
     dataset = filter(condition, examples)
 
     random.seed(seed)
-    wrong_aspects = ['car', 'plane', 'window', 'john', 'desk', 'fridge', 'sink']
-    random.shuffle(wrong_aspects)
-    wrong_aspect = itertools.cycle(wrong_aspects)
+    nouns = ['car', 'plane', 'bottle', 'bag', 'desk', 'fridge', 'sink']
 
     # Map unrelated aspects (verified) and expect the neutral sentiment.
-    convert = lambda e: LabeledExample(e.text, next(wrong_aspect), Sentiment.neutral)
+    convert = lambda e: LabeledExample(e.text, random.choice(nouns), Sentiment.neutral)
     dataset = map(convert, dataset)
 
     return dataset
 
 
 @memory.cache
-def predict_with_wrong_aspect(domain: str, seed: int) -> np.ndarray:
+def evaluate_with_wrong_aspect(domain: str, seed: int) -> np.ndarray:
     name = PRETRAINED_MODEL_NAMES[domain]
     dataset = build_dataset(domain, seed)
     nlp = absa.load(name)
@@ -62,14 +59,14 @@ if __name__ == '__main__':
 
         matrix = []
         for random_seed in range(7):
-            matrix.append(predict_with_wrong_aspect(dataset_domain, random_seed))
+            matrix.append(evaluate_with_wrong_aspect(dataset_domain, random_seed))
         matrix = np.array(matrix)
 
         acc = lambda m: np.diagonal(m).sum() / m.sum()
         accuracies = [round(acc(m_i), 4) for m_i in matrix]
         mean_accuracy = np.mean(accuracies)
         mean_acu_accuracy = acc(np.sum(matrix, axis=0))
-        logger.info(f'{dataset_domain.upper():10} DOMAIN\n'
-                    f'Mean Accuracy: {mean_accuracy:.4f}\n'
-                    f'Mean Accumulated Accuracy: {mean_acu_accuracy:.4f}\n'
+        logger.info(f'{dataset_domain.upper()} DOMAIN\n'
+                    f'Acc. mean: {mean_accuracy:.4f}\n'
+                    f'Acc. mean accumulated: {mean_acu_accuracy:.4f}\n'
                     f'Details: {accuracies}')

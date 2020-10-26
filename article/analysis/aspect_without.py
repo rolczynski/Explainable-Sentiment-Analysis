@@ -37,7 +37,7 @@ def build_dataset(domain: str, unknown_token: str) -> Iterable[LabeledExample]:
 
 
 @memory.cache
-def predict_without_aspect(domain: str) -> np.ndarray:
+def evaluate_without_aspect(domain: str) -> np.ndarray:
     name = PRETRAINED_MODEL_NAMES[domain]
     tokenizer = transformers.BertTokenizer.from_pretrained(name)
     dataset = build_dataset(domain, unknown_token=tokenizer.unk_token)
@@ -53,8 +53,9 @@ if __name__ == '__main__':
     os.chdir(HERE)
     utils.setup_logger(HERE / 'logs' / 'aspect-without.log')
 
-    logger.info('Begin Evaluation')
+    logger.info('Begin Evaluation: Predict With the Masked Aspect')
     for dataset_domain in ['restaurant', 'laptop']:
-        matrix = predict_without_aspect(dataset_domain)
+        matrix = evaluate_without_aspect(dataset_domain)
         accuracy = np.diagonal(matrix).sum() / matrix.sum()
-        logger.info(f'Accuracy {dataset_domain:10}: {accuracy:.4f}')
+        logger.info(f'{dataset_domain.upper()} DOMAIN\n'
+                    f'Acc. {dataset_domain}: {accuracy:.4f}')
