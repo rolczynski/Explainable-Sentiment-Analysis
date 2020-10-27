@@ -1,8 +1,10 @@
+import os
 import logging
+from pathlib import PosixPath
 
 
 def setup_logger(
-        file_path: str = None,
+        file_path: PosixPath = None,
         level: int = 20,
         msg_format: str = None
 ):
@@ -17,6 +19,7 @@ def setup_logger(
     # Handle all messages from the logger (not set the handler level)
     root_logger.addHandler(console)
     if file_path:
+        os.makedirs(file_path.parent, exist_ok=True)
         file_handler = logging.FileHandler(file_path, mode='w')
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)

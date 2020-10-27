@@ -18,8 +18,8 @@ logger = logging.getLogger('analysis.aspect_separation')
 HERE = pathlib.Path(__file__).parent
 memory = Memory(HERE / 'outputs')
 PRETRAINED_MODEL_NAMES = {
-    'restaurant': 'absa/bert-rest-0.2',
-    'laptop': 'absa/bert-lapt-0.2'
+    'restaurant': 'absa/classifier-rest-0.2',
+    'laptop': 'absa/classifier-lapt-0.2'
 }
 TEMPLATES = {
     Sentiment.positive: ['the {noun} is really great.',
@@ -108,17 +108,19 @@ if __name__ == '__main__':
 
     domains = ['restaurant', 'laptop']
     ref_results = [evaluate(domain) for domain in domains]
-    accuracy = lambda m: np.diagonal(m).sum() / m.sum()
     # Note that positive refers to the positive template therefore here
     # we select neutral and negative examples in the first case [0, 1].
-    ref_acc_pos = np.array([accuracy(m[:, [0, 1]]) for m in ref_results])
-    ref_acc_neg = np.array([accuracy(m[:, [0, 2]]) for m in ref_results])
+    accuracy_pos = lambda m: m[[0, 1], [0, 1]].sum() / m.sum()
+    accuracy_neg = lambda m: m[[0, 1], [0, 2]].sum() / m.sum()
+    ref_acc_pos = np.array([accuracy_pos(m[[0, 1], :]) for m in ref_results])
+    ref_acc_neg = np.array([accuracy_neg(m[[0, 2], :]) for m in ref_results])
 
     templates = [(t, s) for s,templates in TEMPLATES.items() for t in templates]
     seeds = range(args.seeds)
     space = itertools.product(domains, templates, seeds)
     results = [evaluate_with_enriched_text(domain, template, template_sent, seed)
                for domain, (template, template_sent), seed in space]
+    accuracy = lambda m: np.diagonal(m).sum() / m.sum()
     acc = list(map(accuracy, results))
 
     i, j, k = len(domains), len(templates), len(seeds)
@@ -140,10 +142,10 @@ if __name__ == '__main__':
 
     summary = lambda i: \
         (f'Added the Positive Sentence\n'
-         f'Acc. mean: {acc_pos_mean[i]:.4f} std: {acc_pos_mean[i]:.4f}\n'
+         f'Acc. mean: {acc_pos_mean[i]:.4f} std: {acc_pos_std[i]:.4f}\n'
          f'Relative Improvement: {acc_pos_improvement[i]*100:.2f} %\n\n'
          f'Added the Negative Sentence\n'
-         f'Acc. mean: {acc_neg_mean[i]:.4f} std: {acc_neg_mean[i]:.4f}\n'
+         f'Acc. mean: {acc_neg_mean[i]:.4f} std: {acc_neg_std[i]:.4f}\n'
          f'Relative Improvement: {acc_neg_improvement[i]*100:.2f} %\n\n'
          f'Details:\n{details(i)}\n')
 

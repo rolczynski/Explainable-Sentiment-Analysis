@@ -16,8 +16,8 @@ logger = logging.getLogger('analysis.aspect_condition')
 HERE = pathlib.Path(__file__).parent
 memory = Memory(HERE / 'outputs')
 PRETRAINED_MODEL_NAMES = {
-    'restaurant': 'absa/bert-rest-0.2',
-    'laptop': 'absa/bert-lapt-0.2'
+    'restaurant': 'absa/classifier-rest-0.2',
+    'laptop': 'absa/classifier-lapt-0.2'
 }
 
 
@@ -65,8 +65,7 @@ if __name__ == '__main__':
         acc = lambda m: np.diagonal(m).sum() / m.sum()
         accuracies = [round(acc(m_i), 4) for m_i in matrix]
         mean_accuracy = np.mean(accuracies)
-        mean_acu_accuracy = acc(np.sum(matrix, axis=0))
         logger.info(f'{dataset_domain.upper()} DOMAIN\n'
                     f'Acc. mean: {mean_accuracy:.4f}\n'
-                    f'Acc. mean accumulated: {mean_acu_accuracy:.4f}\n'
-                    f'Details: {accuracies}')
+                    f'Acc. mean details: \n{accuracies}\n'
+                    f'Confusion Matrix accumulated (y, y_hat):\n{np.sum(matrix, axis=0)}\n')

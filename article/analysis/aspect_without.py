@@ -7,7 +7,6 @@ import numpy as np
 import transformers
 import aspect_based_sentiment_analysis as absa
 from aspect_based_sentiment_analysis import LabeledExample
-from aspect_based_sentiment_analysis import Sentiment
 from joblib import Memory
 
 import utils
@@ -16,23 +15,17 @@ logger = logging.getLogger('analysis.aspect_without')
 HERE = pathlib.Path(__file__).parent
 memory = Memory(HERE / 'outputs')
 PRETRAINED_MODEL_NAMES = {
-    'restaurant': 'absa/bert-rest-0.2',
-    'laptop': 'absa/bert-lapt-0.2'
+    'restaurant': 'absa/classifier-rest-0.2',
+    'laptop': 'absa/classifier-lapt-0.2'
 }
 
 
 def build_dataset(domain: str, unknown_token: str) -> Iterable[LabeledExample]:
     examples = absa.load_examples('semeval', domain, test=True)
-
-    # Process only positive/negative examples
-    condition = lambda e: e.sentiment in [Sentiment.positive, Sentiment.negative]
-    dataset = filter(condition, examples)
-
     # Remove the information about an aspect
-    # (change aspect to the special [UNK] token)
+    # (change aspect to the special token)
     convert = lambda e: LabeledExample(e.text, unknown_token, e.sentiment)
-    dataset = map(convert, dataset)
-
+    dataset = map(convert, examples)
     return dataset
 
 
@@ -57,5 +50,5 @@ if __name__ == '__main__':
     for dataset_domain in ['restaurant', 'laptop']:
         matrix = evaluate_without_aspect(dataset_domain)
         accuracy = np.diagonal(matrix).sum() / matrix.sum()
-        logger.info(f'{dataset_domain.upper()} DOMAIN\n'
-                    f'Acc. {dataset_domain}: {accuracy:.4f}')
+        logger.info(f'{dataset_domain.upper()} DOMAIN Acc. : {accuracy:.4f}\n'
+                    f'Confusion Matrix (y, y_hat)\n{matrix}\n')
