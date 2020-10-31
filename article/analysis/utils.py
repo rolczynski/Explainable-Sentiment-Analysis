@@ -1,6 +1,8 @@
 import os
 import logging
 from pathlib import PosixPath
+from typing import Any
+from typing import List
 
 import numpy as np
 
@@ -28,3 +30,9 @@ def setup_logger(
 
 def accuracy(matrix: np.ndarray) -> float:
     return np.diagonal(matrix).sum() / matrix.sum()
+
+
+def split(x: List[Any], n: int) -> List[Any]:
+    """Split the list x into n-parts."""
+    m = len(x) // n + 1
+    return [x[i:i + m] for i in range(0, len(x), m)]
