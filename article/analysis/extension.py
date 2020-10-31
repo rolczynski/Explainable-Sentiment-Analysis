@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import List, Tuple
 
 import tensorflow as tf
@@ -11,6 +12,7 @@ from aspect_based_sentiment_analysis import TokenizedExample
 from aspect_based_sentiment_analysis import BasicPatternRecognizer
 
 
+@dataclass
 class RandomPatternRecognizer(PatternRecognizer):
 
     def __call__(
@@ -23,6 +25,7 @@ class RandomPatternRecognizer(PatternRecognizer):
         return [pattern]
 
 
+@dataclass
 class AttentionPatternRecognizer(BasicPatternRecognizer):
 
     def transform(
@@ -52,6 +55,7 @@ class AttentionPatternRecognizer(BasicPatternRecognizer):
         return w, patterns
 
 
+@dataclass
 class GradientPatternRecognizer(BasicPatternRecognizer):
 
     def transform(

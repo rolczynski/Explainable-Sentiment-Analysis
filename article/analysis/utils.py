@@ -2,13 +2,14 @@ import os
 import logging
 from pathlib import PosixPath
 
+import numpy as np
+
 
 def setup_logger(
         file_path: PosixPath = None,
         level: int = 20,
-        msg_format: str = None
+        msg_format: str = '%(asctime)s [%(levelname)s] [%(name)s] %(message)s'
 ):
-    msg_format = msg_format or '%(asctime)s [%(levelname)s] [%(name)s] %(message)s'
     root_logger = logging.getLogger('analysis')
     root_logger.setLevel(level)
     root_logger.propagate = False
@@ -23,3 +24,7 @@ def setup_logger(
         file_handler = logging.FileHandler(file_path, mode='w')
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)
+
+
+def accuracy(matrix: np.ndarray) -> float:
+    return np.diagonal(matrix).sum() / matrix.sum()
