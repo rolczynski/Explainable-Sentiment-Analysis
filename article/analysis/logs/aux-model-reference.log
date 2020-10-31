@@ -1,0 +1,55 @@
+2020-10-30 12:01:37 [INFO] [analysis.aux_model_reference] Begin Evaluation: Basic Pattern Recognizer
+2020-10-30 12:01:44 [INFO] [analysis.aux_model_reference] RESTAURANT DOMAIN
+Acc. Semeval: 0.8518
+Confusion Matrix (y, y_hat)
+[[100  21  75]
+ [ 22 148  26]
+ [ 16   6 706]]
+Acc. Semeval with the ref. recognizer: 0.8313
+Confusion Matrix (y, y_hat)
+[[101  20  75]
+ [ 31 139  26]
+ [ 31   6 691]]
+Relative Improvement: -2.41 %
+
+Acc. Test B: 0.3810
+Confusion Matrix (y, y_hat)
+[[352 291 281]
+ [  0   0   0]
+ [  0   0   0]]
+Acc. Test B with the ref. recognizer: 0.7955
+Confusion Matrix (y, y_hat)
+[[735 120  69]
+ [  0   0   0]
+ [  0   0   0]]
+Relative Improvement: 108.81 %
+
+(details) the ref. recognizer weights: (-0.024777732867904172, 44.443480272238)
+
+2020-10-30 12:01:50 [INFO] [analysis.aux_model_reference] LAPTOP DOMAIN
+Acc. Semeval: 0.7978
+Confusion Matrix (y, y_hat)
+[[ 90  49  30]
+ [  5 117   6]
+ [ 24  15 302]]
+Acc. Semeval with the ref. recognizer: 0.7900
+Confusion Matrix (y, y_hat)
+[[ 91  49  29]
+ [  8 114   6]
+ [ 27  15 299]]
+Relative Improvement: -0.98 %
+
+Acc. Test B: 0.3603
+Confusion Matrix (y, y_hat)
+[[169  78 222]
+ [  0   0   0]
+ [  0   0   0]]
+Acc. Test B with the ref. recognizer: 0.7441
+Confusion Matrix (y, y_hat)
+[[349  29  91]
+ [  0   0   0]
+ [  0   0   0]]
+Relative Improvement: 106.51 %
+
+(details) the ref. recognizer weights: (-0.1756759672098398, 40.165352325745026)
+

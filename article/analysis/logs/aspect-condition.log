@@ -1,0 +1,19 @@
+2020-10-27 20:14:13 [INFO] [analysis.aspect_condition] Begin Evaluation: Predict with the Wrong Aspect
+2020-10-27 20:14:13 [INFO] [analysis.aspect_condition] RESTAURANT DOMAIN
+Acc. mean: 0.4054
+Acc. mean details: 
+[0.381, 0.3864, 0.4253, 0.4102, 0.3972, 0.4351, 0.4026]
+Confusion Matrix accumulated (y, y_hat):
+[[2622 2037 1809]
+ [   0    0    0]
+ [   0    0    0]]
+
+2020-10-27 20:14:13 [INFO] [analysis.aspect_condition] LAPTOP DOMAIN
+Acc. mean: 0.3594
+Acc. mean details: 
+[0.3603, 0.3582, 0.3603, 0.3667, 0.3518, 0.371, 0.3475]
+Confusion Matrix accumulated (y, y_hat):
+[[1180  536 1567]
+ [   0    0    0]
+ [   0    0    0]]
+

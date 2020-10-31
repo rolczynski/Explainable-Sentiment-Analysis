@@ -107,6 +107,7 @@ def evaluate(
 
 
 def experiment(models: Dict[str, str]):
+    np.random.seed(0)
     utils.setup_logger(HERE / 'logs' / 'recognition-key-token.log')
     logger.info('Begin Evaluation: the Key Token Recognition')
 

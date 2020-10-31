@@ -1,0 +1,13 @@
+2020-10-27 20:15:33 [INFO] [analysis.aspect_without] Begin Evaluation: Predict With the Masked Aspect
+2020-10-27 20:15:33 [INFO] [analysis.aspect_without] RESTAURANT DOMAIN Acc. : 0.7562
+Confusion Matrix (y, y_hat)
+[[103  48  45]
+ [ 24 161  11]
+ [ 82  63 583]]
+
+2020-10-27 20:15:33 [INFO] [analysis.aspect_without] LAPTOP DOMAIN Acc. : 0.7163
+Confusion Matrix (y, y_hat)
+[[121  30  18]
+ [ 48  78   2]
+ [ 77   6 258]]
+
