@@ -1,0 +1,65 @@
+2020-11-01 12:42:08 [INFO] [analysis.recognition-key-token-pair] Begin Evaluation: the Key Token Pair Recognition
+2020-11-01 12:42:20 [INFO] [analysis.recognition-key-token-pair] RESTAURANT DOMAIN
+Examples that have at least one key token pair: 0.2051
+
+Random Pattern Recognizer
+Acc.: 0.2873 (0.0589)
+Confusion Matrix (y_ref, y_new):
+[[116   1  21]
+ [  7 156  12]
+ [ 18   7 782]]
+
+Attention Pattern Recognizer
+Acc.: 0.7401 (0.1518)
+Confusion Matrix (y_ref, y_new):
+[[103   8  27]
+ [ 17 120  38]
+ [ 59  21 727]]
+
+Gradient Pattern Recognizer
+Acc.: 0.4440 (0.0911)
+Confusion Matrix (y_ref, y_new):
+[[112   8  18]
+ [ 10 155  10]
+ [ 33  23 751]]
+
+Basic Pattern Recognizer
+Acc.: 0.9969 (0.2045)
+Confusion Matrix (y_ref, y_new):
+[[ 97  10  31]
+ [ 27 105  43]
+ [ 83  35 689]]
+
+
+2020-11-01 12:42:29 [INFO] [analysis.recognition-key-token-pair] LAPTOP DOMAIN
+Examples that have at least one key token pair: 0.2263
+
+Random Pattern Recognizer
+Acc.: 0.2909 (0.0658)
+Confusion Matrix (y_ref, y_new):
+[[106   3  10]
+ [ 13 159   9]
+ [  5   2 331]]
+
+Attention Pattern Recognizer
+Acc.: 0.7341 (0.1661)
+Confusion Matrix (y_ref, y_new):
+[[102   6  11]
+ [ 35 118  28]
+ [ 23   3 312]]
+
+Gradient Pattern Recognizer
+Acc.: 0.3255 (0.0737)
+Confusion Matrix (y_ref, y_new):
+[[107   4   8]
+ [ 10 156  15]
+ [  9   1 328]]
+
+Basic Pattern Recognizer
+Acc.: 0.9072 (0.2053)
+Confusion Matrix (y_ref, y_new):
+[[ 99   7  13]
+ [ 44 101  36]
+ [ 26   5 307]]
+
+

@@ -16,6 +16,7 @@ from joblib import Memory
 from . import extension
 from . import recognition_key_token
 from . import utils
+from . import plots
 
 logger = logging.getLogger('analysis.recognition-key-token-pair')
 HERE = pathlib.Path(__file__).parent
@@ -126,7 +127,7 @@ def evaluate(
     return acc, matrix, y_ref != y_new
 
 
-def experiment(models: Dict[str, str]):
+def experiment(models: Dict[str, str], save_confusion_matrix: bool = True):
     utils.setup_logger(HERE / 'logs' / 'recognition-key-token-pair.log')
     logger.info('Begin Evaluation: the Key Token Pair Recognition')
 
@@ -148,6 +149,9 @@ def experiment(models: Dict[str, str]):
             nlp.professor.pattern_recognizer = recognizer
             result = evaluate(nlp, domain, repr(recognizer))
             results.append(result)
+
+        if save_confusion_matrix:
+            plots.confusion_matrix.save_figure(results, domain)
 
         logger.info(
             f'{domain.upper()} DOMAIN\n'
