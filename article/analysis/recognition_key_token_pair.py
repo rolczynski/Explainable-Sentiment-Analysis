@@ -31,9 +31,10 @@ def mask_tokens(
     nlp.tokenizer.basic_tokenizer.never_split = {nlp.tokenizer.mask_token}
     tokens = list(example.text_tokens)  # Break the reference to the object.
     if not indices:
-        best = 0    # The patterns have already been sorted.
-        chosen_pattern = example.review.patterns[best]
-        descending = np.argsort(chosen_pattern.weights * -1)
+        # Choose most important tokens (indices) based on patterns.
+        weights = [p.weights for p in example.review.patterns]
+        weights = np.array(weights).sum(axis=0)
+        descending = np.argsort(weights * -1)
         indices = descending[:2]
     for index in indices:
         tokens[index] = nlp.tokenizer.mask_token
@@ -74,10 +75,10 @@ def _key_token_pair_mask(
     batches = absa.utils.batches(examples, batch_size=32)
 
     for batch in batches:
-        indices, mask_index, batch_examples = zip(*batch)
+        indices, *masked_tokens_ij, batch_examples = zip(*batch)
         predictions = nlp.transform(batch_examples)
         y_hat = [e.sentiment.value for e in predictions]
-        partial_results.extend(zip(indices, mask_index, y_hat))
+        partial_results.extend(zip(indices, *masked_tokens_ij, y_hat))
     return np.array(partial_results)
 
 
@@ -85,7 +86,9 @@ def key_token_pair_mask(nlp: Pipeline, domain: str, parts=10) -> np.ndarray:
     d = defaultdict(set)
     for part in range(parts):
         partial_results = _key_token_pair_mask(nlp, domain, (part, parts))
-        for i, mask_i, y_hat in partial_results:
+        n = len(d)
+        for i, *ij, y_hat in partial_results:
+            i += n  # We have parts so the index needs to be shifted.
             d[i].add(y_hat)
     mask = [len(classes) > 1 for classes in d.values()]
     return np.array(mask)
