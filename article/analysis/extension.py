@@ -27,6 +27,7 @@ class RandomPatternRecognizer(PatternRecognizer):
 
 @dataclass
 class AttentionPatternRecognizer(BasicPatternRecognizer):
+    add_diagonal: bool = True
 
     def transform(
             self,
@@ -43,10 +44,10 @@ class AttentionPatternRecognizer(BasicPatternRecognizer):
         w /= np.max(w + 1e-9)
 
         patterns = x[text_mask, :][:, text_mask]
-        max_values = np.max(patterns + 1e-9, axis=1)
-        np.fill_diagonal(patterns, max_values)
-        patterns /= max_values.reshape(-1, 1)
-
+        if self.add_diagonal:
+            max_values = np.max(patterns + 1e-9, axis=1)
+            np.fill_diagonal(patterns, max_values)
+            patterns /= max_values.reshape(-1, 1)
         if self.is_scaled:
             patterns *= w.reshape(-1, 1)
         if self.is_rounded:
@@ -57,6 +58,7 @@ class AttentionPatternRecognizer(BasicPatternRecognizer):
 
 @dataclass
 class GradientPatternRecognizer(BasicPatternRecognizer):
+    add_diagonal: bool = True
 
     def transform(
             self,
@@ -73,10 +75,10 @@ class GradientPatternRecognizer(BasicPatternRecognizer):
         w /= np.max(w + 1e-9)
 
         patterns = x[text_mask, :][:, text_mask]
-        max_values = np.max(patterns + 1e-9, axis=1)
-        np.fill_diagonal(patterns, max_values)
-        patterns /= max_values.reshape(-1, 1)
-
+        if self.add_diagonal:
+            max_values = np.max(patterns + 1e-9, axis=1)
+            np.fill_diagonal(patterns, max_values)
+            patterns /= max_values.reshape(-1, 1)
         if self.is_scaled:
             patterns *= w.reshape(-1, 1)
         if self.is_rounded:

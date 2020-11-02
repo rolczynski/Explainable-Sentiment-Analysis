@@ -2,6 +2,7 @@ import logging
 import pathlib
 import itertools
 from typing import Dict
+from typing import Iterable
 from typing import List
 from typing import Tuple
 from collections import defaultdict
@@ -23,38 +24,39 @@ HERE = pathlib.Path(__file__).parent
 memory = Memory(HERE / 'outputs')
 
 
-def mask_token(
+def mask_tokens(
         nlp: Pipeline,
         example: PredictedExample,
-        index: int = None
+        k: int = None,
+        indices: Iterable[int] = None,
 ) -> Example:
     # Make sure that the pipeline `NLP` has prepared the basic tokenizer.
     nlp.tokenizer.basic_tokenizer.never_split = {nlp.tokenizer.mask_token}
     tokens = list(example.text_tokens)  # Break the reference to the object.
-    if index is None:
-        best = 0    # The patterns have already been sorted.
-        chosen_pattern = example.review.patterns[best]
-        index = np.argmax(chosen_pattern.weights)
-    tokens[index] = nlp.tokenizer.mask_token
+    if not indices:
+        # Choose the most important tokens (indices) based on patterns.
+        indices = absa.predict_key_set(example.review.patterns, k)
+    for index in indices:
+        tokens[index] = nlp.tokenizer.mask_token
     new_example = Example(text=' '.join(tokens), aspect=example.aspect)
     return new_example
 
 
-def masked_examples(nlp: Pipeline, domain: str, is_test: bool):
+def mask_examples(nlp: Pipeline, domain: str, is_test: bool):
     dataset = absa.load_examples('semeval', domain, is_test)
     for i, example in enumerate(dataset):
         yield i, -1, example    # Predict without a mask.
         [tokenized_example] = nlp.tokenize([example])
         n = len(tokenized_example.text_tokens)
         for index in range(n):
-            new_example = mask_token(nlp, tokenized_example, index)
+            new_example = mask_tokens(nlp, tokenized_example, indices=[index])
             yield i, index, new_example
 
 
 @memory.cache(ignore=['nlp'])
 def _key_token_mask(nlp: Pipeline, domain: str, is_test: bool) -> np.ndarray:
     partial_results = []
-    examples = masked_examples(nlp, domain, is_test)
+    examples = mask_examples(nlp, domain, is_test)
     batches = absa.utils.batches(examples, batch_size=32)
     for batch in batches:
         indices, mask_index, batch_examples = zip(*batch)
@@ -83,7 +85,7 @@ def _evaluate(nlp: Pipeline, domain: str, is_test: bool, name: str) -> np.ndarra
         predictions = nlp.transform(batch)
         predictions = list(predictions)  # Keep in memory to append at the end.
 
-        new_batch = [mask_token(nlp, prediction) for prediction in predictions]
+        new_batch = [mask_tokens(nlp, prediction, k=1) for prediction in predictions]
         new_predictions = nlp.transform(new_batch)
 
         y_ref = [e.sentiment.value for e in predictions]
@@ -119,10 +121,15 @@ def experiment(models: Dict[str, str]):
         max_score = sum(is_key_token) / len(is_key_token)
 
         random = extension.RandomPatternRecognizer()
-        attention = extension.AttentionPatternRecognizer(max_patterns=5)
+        attention_1 = extension.AttentionPatternRecognizer(
+            max_patterns=5, is_scaled=False, add_diagonal=False)
+        attention_2 = extension.AttentionPatternRecognizer(
+            max_patterns=5, is_scaled=True, add_diagonal=False)
+        attention_3 = extension.AttentionPatternRecognizer(
+            max_patterns=5, is_scaled=True, add_diagonal=True)
         gradient = extension.GradientPatternRecognizer(max_patterns=5)
         basic = absa.BasicPatternRecognizer(max_patterns=5)
-        recognizers = [random, attention, gradient, basic]
+        recognizers = [random, attention_1, attention_2, attention_3, gradient, basic]
 
         results = []
         for recognizer in recognizers:
@@ -137,12 +144,18 @@ def experiment(models: Dict[str, str]):
             f'Random Pattern Recognizer\n'
             f'Acc.: {results[0][0] / max_score:.4f} ({results[0][0]:.4f})\n'
             f'Confusion Matrix (y_ref, y_new):\n{results[0][1]}\n\n'
-            f'Attention Pattern Recognizer\n'
+            f'Attention Pattern Recognizer (without scaling and diagonal)\n'
             f'Acc.: {results[1][0] / max_score:.4f} ({results[1][0]:.4f})\n'
             f'Confusion Matrix (y_ref, y_new):\n{results[1][1]}\n\n'
-            f'Gradient Pattern Recognizer\n'
+            f'Attention Pattern Recognizer (without diagonal)\n'
             f'Acc.: {results[2][0] / max_score:.4f} ({results[2][0]:.4f})\n'
             f'Confusion Matrix (y_ref, y_new):\n{results[2][1]}\n\n'
-            f'Basic Pattern Recognizer\n'
+            f'Attention Pattern Recognizer\n'
             f'Acc.: {results[3][0] / max_score:.4f} ({results[3][0]:.4f})\n'
-            f'Confusion Matrix (y_ref, y_new):\n{results[3][1]}\n\n')
+            f'Confusion Matrix (y_ref, y_new):\n{results[3][1]}\n\n'
+            f'Gradient Pattern Recognizer\n'
+            f'Acc.: {results[4][0] / max_score:.4f} ({results[4][0]:.4f})\n'
+            f'Confusion Matrix (y_ref, y_new):\n{results[4][1]}\n\n'
+            f'Basic Pattern Recognizer\n'
+            f'Acc.: {results[5][0] / max_score:.4f} ({results[5][0]:.4f})\n'
+            f'Confusion Matrix (y_ref, y_new):\n{results[5][1]}\n\n')
