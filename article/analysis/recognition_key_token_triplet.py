@@ -9,11 +9,12 @@ import aspect_based_sentiment_analysis as absa
 from aspect_based_sentiment_analysis import Pipeline
 from aspect_based_sentiment_analysis import Sentiment
 from joblib import Memory
+from sklearn.metrics import confusion_matrix
 
 from . import utils
 from .recognition_key_token import mask_tokens
-from .recognition_key_token import key_token_mask
-from .recognition_key_token_pair import key_token_pair_mask
+from .recognition_key_token import retrieve_labels as key_token_labels
+from .recognition_key_token_pair import retrieve_labels as key_token_pair_labels
 
 
 logger = logging.getLogger('analysis.recognition-key-token-triplet')
@@ -21,20 +22,22 @@ HERE = pathlib.Path(__file__).parent
 memory = Memory(HERE / 'outputs')
 
 
-def mask_examples(nlp: Pipeline, domain: str, part_parts: Tuple[int, int], q: int):
+def mask_examples(
+        nlp: Pipeline,
+        domain: str,
+        part_parts: Tuple[int, int]
+):
     dataset = absa.load_examples('semeval', domain, test=True)
 
     # Filter out examples that contain a key token or a pair of key tokens.
-    mask_1 = key_token_mask(nlp, domain, is_test=True)
-    mask_2 = key_token_pair_mask(nlp, domain)
+    y_ref, _, mask_1 = key_token_labels(nlp, domain, is_test=True)
+    y_ref, _, mask_2 = key_token_pair_labels(nlp, domain, parts=10)
     mask = mask_1 | mask_2
     dataset = [e for e, is_used in zip(dataset, mask) if not is_used]
 
-    dataset = list(filter(lambda e: e.sentiment == Sentiment.negative, dataset))
-    text_lengths = [len(e.text) for e in dataset]
-    threshold = np.percentile(text_lengths, q)
-    dataset = filter(lambda e: len(e.text) <= threshold, dataset)
-    dataset = list(dataset)
+    # Process only the predicted negative examples.
+    negative = y_ref == Sentiment.negative.value
+    dataset = [e for e, is_neg in zip(dataset, negative) if is_neg]
 
     # Split a dataset because it's better to cache more freq.
     part, parts = part_parts
@@ -62,14 +65,13 @@ def mask_examples(nlp: Pipeline, domain: str, part_parts: Tuple[int, int], q: in
 
 
 @memory.cache(ignore=['nlp'])
-def _key_token_triplet_mask(
+def _retrieve_negative_labels(
         nlp: Pipeline,
         domain: str,
-        part_parts: Tuple[int, int],
-        q: int
+        part_parts: Tuple[int, int]
 ) -> np.ndarray:
     partial_results = []
-    examples = mask_examples(nlp, domain, part_parts, q)
+    examples = mask_examples(nlp, domain, part_parts)
     batches = absa.utils.batches(examples, batch_size=32)
     for batch in batches:
         indices, *masked_tokens_ijk, batch_examples = zip(*batch)
@@ -79,35 +81,65 @@ def _key_token_triplet_mask(
     return np.array(partial_results)
 
 
-def key_token_triplet_mask(
+def retrieve_negative_labels(
         nlp: Pipeline,
         domain: str,
-        parts=5,
-        q: int = 90  # The text length percentile threshold.
+        parts: int = 5
 ) -> np.ndarray:
-    d = defaultdict(set)
+    results = []
+    d = defaultdict(list)
     for part in range(parts):
-        partial_results = _key_token_triplet_mask(nlp, domain, (part, parts), q)
+        partial_results = _retrieve_negative_labels(nlp, domain, (part, parts))
+        results.extend(partial_results)
+
         n = len(d)
         for i, *ijk, y_hat in partial_results:
             i += n  # We have parts so the index needs to be shifted.
-            d[i].add(y_hat)
-    mask = [len(classes) > 1 for classes in d.values()]
-    return np.array(mask)
+            d[i].append(y_hat)
+    results = np.array(results)
+
+    example_indices, mask_i, mask_j, mask_k, y_new = results.T
+    # The index -1 means predictions without masking.
+    y_ref = y_new[mask_i == -1]
+
+    y_new = []
+    for ref, classes in zip(y_ref, d.values()):
+        classes = np.array(classes)
+        available = np.where(classes != ref)
+        available_classes = classes[available].tolist()
+
+        if not available_classes:
+            y_new.append(ref)
+            continue
+
+        new = np.bincount(available_classes).argmax()
+        y_new.append(new)
+    y_new = np.array(y_new)
+    mask = y_ref != y_new
+    return y_ref, y_new, mask
 
 
 def experiment(models: Dict[str, str]):
-    utils.setup_logger(HERE / 'logs' / 'recognition-key-token-pair.log')
-    logger.info('Begin Evaluation: the Key Token Pair Recognition')
+    utils.setup_logger(HERE / 'logs' / 'recognition-key-token-triplet.log')
+    logger.info('Begin Evaluation: the Key Token Triplet Recognition '
+                '(Predicted Negative Examples)')
 
     for domain in ['restaurant', 'laptop']:
         name = models[domain]
         nlp = absa.load(name)
 
-        is_pair = key_token_triplet_mask(nlp, domain)
-        max_score = sum(is_pair) / len(is_pair)
+        y_ref, y_new, mask = retrieve_negative_labels(nlp, domain)
+        max_score_matrix = confusion_matrix(y_ref, y_new)
+
+        # Remember that we process only (predicted) negative examples,
+        # therefore, we need to retrieve predicted negative labels.
+        _, reference, _ = key_token_labels(nlp, domain, is_test=True)
+        negative = reference == Sentiment.negative
+        max_score = sum(mask) / sum(negative)
 
         logger.info(
             f'{domain.upper()} DOMAIN\n'
-            f'Examples that have at least one triplet '
-            f'of key tokens: {max_score:.4f}\n\n')
+            f'Examples that have at least one key token triplet: '
+            f'{max_score:.4f}\ny_ref means a prediction without a mask, '
+            f'and y_new with a triplet mask.\n'
+            f'Confusion Matrix (y_ref, y_new):\n{max_score_matrix}\n\n')
