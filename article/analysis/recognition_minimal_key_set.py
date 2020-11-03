@@ -6,9 +6,9 @@ from collections import defaultdict
 
 import numpy as np
 import aspect_based_sentiment_analysis as absa
-from aspect_based_sentiment_analysis import PatternRecognizer
 from aspect_based_sentiment_analysis import PredictedExample
 from aspect_based_sentiment_analysis import Pipeline
+from sklearn.metrics import confusion_matrix
 from joblib import Memory
 
 from . import extension
@@ -38,7 +38,7 @@ def mask_examples(
 @memory.cache(ignore=['nlp'])
 # The pattern recognizer name is used to distinguish function calls (caching).
 def _evaluate(nlp: Pipeline, domain: str, name: str, max_k: int) -> np.ndarray:
-    results = []
+    partial_results = []
     dataset = absa.load_examples('semeval', domain, test=True)
     batches = absa.utils.batches(dataset, batch_size=32)
     for batch_i, batch in enumerate(batches):
@@ -48,7 +48,7 @@ def _evaluate(nlp: Pipeline, domain: str, name: str, max_k: int) -> np.ndarray:
         i = np.arange(len(predictions)) + batch_i * 32
         s = [e.sentiment.value for e in predictions]
         k = np.zeros_like(i)
-        results.extend(zip(i, s, s, k))
+        partial_results.extend(zip(i, s, s, k))
 
         masked_examples = mask_examples(nlp, predictions, max_k)
         masked_batches = absa.utils.batches(masked_examples, batch_size=32)
@@ -57,29 +57,48 @@ def _evaluate(nlp: Pipeline, domain: str, name: str, max_k: int) -> np.ndarray:
             i = np.array(i) + batch_i * 32
             masked_predictions = nlp.transform(masked_batch_examples)
             new_s = [e.sentiment.value for e in masked_predictions]
-            results.extend(zip(i, s, new_s, k))
-    return np.array(results)
+            partial_results.extend(zip(i, s, new_s, k))
+    return np.array(partial_results)
 
 
-def evaluate(
-        recognizer: PatternRecognizer,
-        domain: str,
-        name: str,
-        max_k: int
-) -> List[Tuple[float, np.ndarray, np.ndarray]]:
-    partial_results = _evaluate(recognizer, domain, name, max_k)
+def retrieve_minimal_key_sets(partial_results):
     grouped = defaultdict(list)
     for i, s, s_new, k in partial_results:
         if s != s_new:
             grouped[i].append([i, s, s_new, k])
-
     minimal_key_sets = []
-    for i, group in grouped.items():
-        *_, k = zip(*group)
-        min_k_index = np.argmin(k)
+    for group in grouped.values():
+        *_, min_k = zip(*group)
+        min_k_index = np.argmin(min_k)
         minimal_key_sets.append(group[min_k_index])
-    i, s, s_new, k = np.array(minimal_key_sets).T
-    return np.bincount(k)
+    return np.array(minimal_key_sets)
+
+
+def evaluate(
+        nlp: Pipeline,
+        domain: str,
+        name: str,
+        max_k: int
+) -> List[Tuple[float, np.ndarray, np.ndarray]]:
+    partial_results = _evaluate(nlp, domain, name, max_k)
+    i, s, s_new, k = partial_results.T
+
+    minimal_key_sets = retrieve_minimal_key_sets(partial_results)
+    min_i, min_s, min_s_new, min_k = minimal_key_sets.T
+    matrix = confusion_matrix(min_s, min_s_new)
+
+    hist = np.bincount(min_k[min_s == 1])
+    hist = (hist / len(set(i[s == 1]))).round(3)
+
+    ground_truth = []
+    token_mask = key_token_mask(nlp, domain, is_test=True)
+    x = token_mask[np.unique(i[s == 1])]
+    ground_truth.append(sum(x) / len(x))
+
+    pair_mask = key_token_pair_mask(nlp, domain)
+    pair_mask = pair_mask != token_mask
+    x = pair_mask[np.unique(i[s == 1])]
+    ground_truth.append(sum(x) / len(x))
 
 
 def experiment(models: Dict[str, str], max_k: int = 5):
@@ -89,11 +108,6 @@ def experiment(models: Dict[str, str], max_k: int = 5):
     for domain in ['restaurant', 'laptop']:
         name = models[domain]
         nlp = absa.load(name)
-
-        token_mask = key_token_mask(nlp, domain, is_test=True)
-        max_score_key_token = sum(token_mask) / len(token_mask)
-        pair_mask = key_token_pair_mask(nlp, domain)
-        max_score_key_token_pair = sum(pair_mask) / len(pair_mask)
 
         random = extension.RandomPatternRecognizer()
         attention = extension.AttentionPatternRecognizer(max_patterns=5)

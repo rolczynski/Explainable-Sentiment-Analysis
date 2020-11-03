@@ -15,7 +15,6 @@ from . import extension
 from . import utils
 from . import plots
 from .recognition_key_token import mask_tokens
-from .recognition_key_token import key_token_mask
 
 
 logger = logging.getLogger('analysis.recognition-key-token-pair')
@@ -25,11 +24,6 @@ memory = Memory(HERE / 'outputs')
 
 def mask_examples(nlp: Pipeline, domain: str, part_parts: Tuple[int, int]):
     dataset = absa.load_examples('semeval', domain, test=True)
-
-    # Filter out examples that contain at least one key token.
-    mask = key_token_mask(nlp, domain, is_test=True)
-    dataset = [e for is_key_token, e in zip(mask, dataset) if not is_key_token]
-
     # Split a dataset because it's better to cache more freq.
     part, parts = part_parts
     chunks = utils.split(dataset, n=parts)
@@ -79,13 +73,8 @@ def key_token_pair_mask(nlp: Pipeline, domain: str, parts=10) -> np.ndarray:
 @memory.cache(ignore=['nlp'])
 # The pattern recognizer name is used to distinguish function calls (caching).
 def _evaluate(nlp: Pipeline, domain: str, name: str) -> np.ndarray:
-    results = []
+    partial_results = []
     dataset = absa.load_examples('semeval', domain, test=True)
-
-    # Filter out examples that contain at least one key token.
-    mask = key_token_mask(nlp, domain, is_test=True)
-    dataset = [e for is_key_token, e in zip(mask, dataset) if not is_key_token]
-
     batches = absa.utils.batches(dataset, batch_size=32)
     for batch in batches:
         predictions = nlp.transform(batch)
@@ -96,9 +85,9 @@ def _evaluate(nlp: Pipeline, domain: str, name: str) -> np.ndarray:
 
         y_ref = [e.sentiment.value for e in predictions]
         y_new = [e.sentiment.value for e in new_predictions]
-        results.extend(zip(y_ref, y_new))
+        partial_results.extend(zip(y_ref, y_new))
     # It's not a generator because we cache function results.
-    return np.array(results)
+    return np.array(partial_results)
 
 
 def evaluate(
