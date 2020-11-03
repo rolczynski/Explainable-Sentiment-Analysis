@@ -1,6 +1,6 @@
-# first line: 45
+# first line: 44
 @memory.cache(ignore=['nlp'])
-def _key_token_pair_mask(
+def _retrieve_labels(
         nlp: Pipeline,
         domain: str,
         part_parts: Tuple[int, int]

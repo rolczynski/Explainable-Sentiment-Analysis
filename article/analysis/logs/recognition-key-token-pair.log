@@ -1,6 +1,11 @@
-2020-11-03 12:06:13 [INFO] [analysis.recognition-key-token-pair] Begin Evaluation: the Key Token Pair Recognition
-2020-11-03 12:06:22 [INFO] [analysis.recognition-key-token-pair] RESTAURANT DOMAIN
+2020-11-03 17:01:58 [INFO] [analysis.recognition-key-token-pair] Begin Evaluation: the Key Token Pair Recognition
+2020-11-03 17:02:07 [INFO] [analysis.recognition-key-token-pair] RESTAURANT DOMAIN
 Examples that have at least one key token pair: 0.4152
+y_ref means a prediction without a mask, and y_new with a single mask.
+Confusion Matrix (y_ref, y_new):
+[[ 51  19  68]
+ [ 50  46  79]
+ [168  81 558]]
 
 Random Pattern Recognizer
 Acc.: 0.1161 (0.0482)
@@ -31,8 +36,13 @@ Confusion Matrix (y_ref, y_new):
  [ 83  35 689]]
 
 
-2020-11-03 12:06:29 [INFO] [analysis.recognition-key-token-pair] LAPTOP DOMAIN
+2020-11-03 17:02:13 [INFO] [analysis.recognition-key-token-pair] LAPTOP DOMAIN
 Examples that have at least one key token pair: 0.4107
+y_ref means a prediction without a mask, and y_new with a single mask.
+Confusion Matrix (y_ref, y_new):
+[[ 62  17  40]
+ [ 68  55  58]
+ [ 48  31 259]]
 
 Random Pattern Recognizer
 Acc.: 0.1489 (0.0611)
