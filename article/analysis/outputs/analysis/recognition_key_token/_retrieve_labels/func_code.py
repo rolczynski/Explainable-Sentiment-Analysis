@@ -1,6 +1,6 @@
 # first line: 56
 @memory.cache(ignore=['nlp'])
-def _key_token_mask(nlp: Pipeline, domain: str, is_test: bool) -> np.ndarray:
+def _retrieve_labels(nlp: Pipeline, domain: str, is_test: bool) -> np.ndarray:
     partial_results = []
     examples = mask_examples(nlp, domain, is_test)
     batches = absa.utils.batches(examples, batch_size=32)

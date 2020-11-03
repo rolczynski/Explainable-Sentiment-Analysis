@@ -54,7 +54,7 @@ def mask_examples(nlp: Pipeline, domain: str, is_test: bool):
 
 
 @memory.cache(ignore=['nlp'])
-def _key_token_mask(nlp: Pipeline, domain: str, is_test: bool) -> np.ndarray:
+def _retrieve_labels(nlp: Pipeline, domain: str, is_test: bool) -> np.ndarray:
     partial_results = []
     examples = mask_examples(nlp, domain, is_test)
     batches = absa.utils.batches(examples, batch_size=32)
@@ -66,13 +66,35 @@ def _key_token_mask(nlp: Pipeline, domain: str, is_test: bool) -> np.ndarray:
     return np.array(partial_results)
 
 
-def key_token_mask(nlp: Pipeline, domain: str, is_test: bool) -> np.ndarray:
-    partial_results = _key_token_mask(nlp, domain, is_test)
-    d = defaultdict(set)
+def retrieve_labels(
+        nlp: Pipeline,
+        domain: str,
+        is_test: bool
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    partial_results = _retrieve_labels(nlp, domain, is_test)
+    example_indices, mask_index, y_new = partial_results.T
+    # The index -1 means predictions without masking.
+    y_ref = y_new[mask_index == -1]
+
+    d = defaultdict(list)
     for i, mask_i, y_hat in partial_results:
-        d[i].add(y_hat)
-    mask = [len(classes) > 1 for classes in d.values()]
-    return np.array(mask)
+        d[i].append(y_hat)
+
+    y_new = []
+    for ref, classes in zip(y_ref, d.values()):
+        classes = np.array(classes)
+        available = np.where(classes != ref)
+        available_classes = classes[available].tolist()
+
+        if not available_classes:
+            y_new.append(ref)
+            continue
+
+        new = np.bincount(available_classes).argmax()
+        y_new.append(new)
+    y_new = np.array(y_new)
+    mask = y_ref != y_new
+    return y_ref, y_new, mask
 
 
 @memory.cache(ignore=['nlp'])
@@ -117,8 +139,9 @@ def experiment(models: Dict[str, str]):
         name = models[domain]
         nlp = absa.load(name)
 
-        is_key_token = key_token_mask(nlp, domain, is_test)
-        max_score = sum(is_key_token) / len(is_key_token)
+        y_ref, y_new, mask = retrieve_labels(nlp, domain, is_test)
+        max_score = sum(mask) / len(mask)
+        max_score_matrix = confusion_matrix(y_ref, y_new)
 
         random = extension.RandomPatternRecognizer()
         attention_1 = extension.AttentionPatternRecognizer(
@@ -139,8 +162,10 @@ def experiment(models: Dict[str, str]):
 
         logger.info(
             f'{domain.upper()} {"TEST" if is_test else "TRAIN"} DOMAIN\n'
-            f'Examples that have at least one key token pair: '
-            f'{max_score:.4f}\n\n'
+            f'Examples that have at least one key token: '
+            f'{max_score:.4f}\ny_ref means a prediction without a mask, '
+            f'and y_new with a single mask.\n'
+            f'Confusion Matrix (y_ref, y_new):\n{max_score_matrix}\n\n'
             f'Random Pattern Recognizer\n'
             f'Acc.: {results[0][0] / max_score:.4f} ({results[0][0]:.4f})\n'
             f'Confusion Matrix (y_ref, y_new):\n{results[0][1]}\n\n'
