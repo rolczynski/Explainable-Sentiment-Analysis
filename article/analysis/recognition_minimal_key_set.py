@@ -7,6 +7,7 @@ from collections import defaultdict
 import numpy as np
 import aspect_based_sentiment_analysis as absa
 from aspect_based_sentiment_analysis import PredictedExample
+from aspect_based_sentiment_analysis import Sentiment
 from aspect_based_sentiment_analysis import Pipeline
 from sklearn.metrics import confusion_matrix
 from joblib import Memory
@@ -15,8 +16,12 @@ from . import extension
 from . import utils
 from . import plots
 from .recognition_key_token import mask_tokens
-from .recognition_key_token import key_token_mask
-from .recognition_key_token_pair import key_token_pair_mask
+from .recognition_key_token import retrieve_labels \
+    as key_token_labels
+from .recognition_key_token_pair import retrieve_labels \
+    as key_token_pair_labels
+from .recognition_key_token_triplet import retrieve_negative_labels \
+    as key_token_triplet_negative_labels
 
 logger = logging.getLogger('analysis.recognition-minimal-key-set')
 HERE = pathlib.Path(__file__).parent
@@ -61,17 +66,39 @@ def _evaluate(nlp: Pipeline, domain: str, name: str, max_k: int) -> np.ndarray:
     return np.array(partial_results)
 
 
-def retrieve_minimal_key_sets(partial_results):
+def retrieve_max_scores(nlp: Pipeline, domain: str) -> np.ndarray:
+    max_scores = []
+    y_ref, _, mask_1 = key_token_labels(nlp, domain, is_test=True)
+    *_, mask_2 = key_token_pair_labels(nlp, domain, parts=10)
+    *_, mask_3 = key_token_triplet_negative_labels(nlp, domain, parts=5)
+
+    negative = y_ref == Sentiment.negative
+    max_scores.append(sum(mask_1[negative]))
+    mask_2 = (mask_2.astype(int) - mask_1.astype(int)).astype(bool)
+    max_scores.append(sum(mask_2[negative]))
+    max_scores.append(sum(mask_3))  # The mask 3 has only negatives.
+
+    max_scores = np.array(max_scores) / sum(negative)
+    max_scores = np.round(max_scores, decimals=3)
+    max_scores = np.append(max_scores, 1-sum(max_scores))
+    return max_scores
+
+
+def filter_partial_results(partial_results):
     grouped = defaultdict(list)
     for i, s, s_new, k in partial_results:
-        if s != s_new:
-            grouped[i].append([i, s, s_new, k])
-    minimal_key_sets = []
-    for group in grouped.values():
-        *_, min_k = zip(*group)
-        min_k_index = np.argmin(min_k)
-        minimal_key_sets.append(group[min_k_index])
-    return np.array(minimal_key_sets)
+        grouped[(i, s)].append([s_new, k])
+    results = []
+    for (i, s), group in grouped.items():
+        s_new, k = zip(*group)
+        is_changed = s_new != s
+        if any(is_changed):
+            i = np.argmax(is_changed)
+            record = i, s, s_new[i], k[i]
+        else:
+            record = i, s, s, max(k)+1
+        results.append(record)
+    return np.array(results)
 
 
 def evaluate(
@@ -81,24 +108,16 @@ def evaluate(
         max_k: int
 ) -> List[Tuple[float, np.ndarray, np.ndarray]]:
     partial_results = _evaluate(nlp, domain, name, max_k)
-    i, s, s_new, k = partial_results.T
+    results = filter_partial_results(partial_results)
+    i, s, s_new, k = results.T
+    matrix = confusion_matrix(s, s_new)
 
-    minimal_key_sets = retrieve_minimal_key_sets(partial_results)
-    min_i, min_s, min_s_new, min_k = minimal_key_sets.T
-    matrix = confusion_matrix(min_s, min_s_new)
-
-    hist = np.bincount(min_k[min_s == 1])
-    hist = (hist / len(set(i[s == 1]))).round(3)
-
-    ground_truth = []
-    token_mask = key_token_mask(nlp, domain, is_test=True)
-    x = token_mask[np.unique(i[s == 1])]
-    ground_truth.append(sum(x) / len(x))
-
-    pair_mask = key_token_pair_mask(nlp, domain)
-    pair_mask = pair_mask != token_mask
-    x = pair_mask[np.unique(i[s == 1])]
-    ground_truth.append(sum(x) / len(x))
+    negative = s == Sentiment.negative
+    hist = np.bincount(k[negative])
+    max_scores = hist[1:4] / sum(negative)
+    max_scores = np.round(max_scores, decimals=3)
+    max_scores = np.append(max_scores, 1-sum(max_scores))
+    return max_scores, matrix
 
 
 def experiment(models: Dict[str, str], max_k: int = 5):
@@ -108,12 +127,13 @@ def experiment(models: Dict[str, str], max_k: int = 5):
     for domain in ['restaurant', 'laptop']:
         name = models[domain]
         nlp = absa.load(name)
+        max_scores = retrieve_max_scores(nlp, domain)
 
         random = extension.RandomPatternRecognizer()
         attention = extension.AttentionPatternRecognizer(max_patterns=5)
         gradient = extension.GradientPatternRecognizer(max_patterns=5)
         basic = absa.BasicPatternRecognizer(max_patterns=5)
-        recognizers = [basic, random, attention, gradient, ]
+        recognizers = [random, attention, gradient, basic]
 
         results = []
         for recognizer in recognizers:
@@ -122,4 +142,13 @@ def experiment(models: Dict[str, str], max_k: int = 5):
             results.append(result)
 
         logger.info(
-            f'{domain.upper()} DOMAIN\n')
+            f'{domain.upper()} DOMAIN\n'
+            f'Max scores: \n{max_scores}\n\n'
+            f'Random Pattern Recognizer: \n{results[0][0]}\n'
+            f'Confusion Matrix (y_ref, y_new):\n{results[0][1]}\n\n'
+            f'Attention Pattern Recognizer: \n{results[1][0]}\n'
+            f'Confusion Matrix (y_ref, y_new):\n{results[1][1]}\n\n'
+            f'Gradient Pattern Recognizer: \n{results[2][0]}\n'
+            f'Confusion Matrix (y_ref, y_new):\n{results[2][1]}\n\n'
+            f'Basic Pattern Recognizer: \n{results[3][0]}\n'
+            f'Confusion Matrix (y_ref, y_new):\n{results[3][1]}\n\n')

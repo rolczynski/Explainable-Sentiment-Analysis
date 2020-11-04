@@ -1,0 +1,67 @@
+2020-11-04 12:53:33 [INFO] [analysis.recognition-minimal-key-set] Begin Evaluation: the Minimal Key Set Recognition
+2020-11-04 12:53:39 [INFO] [analysis.recognition-minimal-key-set] RESTAURANT DOMAIN
+Max scores: 
+[0.497 0.24  0.137 0.126]
+
+Random Pattern Recognizer: 
+[0.074 0.063 0.029 0.834]
+Confusion Matrix (y_ref, y_new):
+[[ 98   6  34]
+ [ 30 120  25]
+ [ 45  17 745]]
+
+Attention Pattern Recognizer: 
+[0.16  0.16  0.086 0.594]
+Confusion Matrix (y_ref, y_new):
+[[ 74  13  51]
+ [ 35  80  60]
+ [129  52 626]]
+
+Gradient Pattern Recognizer: 
+[0.097 0.029 0.023 0.851]
+Confusion Matrix (y_ref, y_new):
+[[ 96  12  30]
+ [ 20 136  19]
+ [ 67  38 702]]
+
+Basic Pattern Recognizer: 
+[0.366 0.091 0.069 0.474]
+Confusion Matrix (y_ref, y_new):
+[[ 74  13  51]
+ [ 40  67  68]
+ [163  56 588]]
+
+
+2020-11-04 12:53:46 [INFO] [analysis.recognition-minimal-key-set] LAPTOP DOMAIN
+Max scores: 
+[0.414 0.282 0.122 0.182]
+
+Random Pattern Recognizer: 
+[0.022 0.061 0.044 0.873]
+Confusion Matrix (y_ref, y_new):
+[[ 96   6  17]
+ [ 15 133  33]
+ [ 22   9 307]]
+
+Attention Pattern Recognizer: 
+[0.238 0.138 0.088 0.536]
+Confusion Matrix (y_ref, y_new):
+[[ 78   8  33]
+ [ 58  72  51]
+ [ 31  11 296]]
+
+Gradient Pattern Recognizer: 
+[0.061 0.077 0.077 0.785]
+Confusion Matrix (y_ref, y_new):
+[[ 93   6  20]
+ [ 25 124  32]
+ [ 21   6 311]]
+
+Basic Pattern Recognizer: 
+[0.249 0.215 0.088 0.448]
+Confusion Matrix (y_ref, y_new):
+[[ 82  11  26]
+ [ 66  61  54]
+ [ 39  16 283]]
+
+
