@@ -28,16 +28,12 @@ def mask_examples(
         part_parts: Tuple[int, int]
 ):
     dataset = absa.load_examples('semeval', domain, test=True)
-
-    # Filter out examples that contain a key token or a pair of key tokens.
+    # Filter out examples that contain a key token or a pair of key tokens,
+    # and that are other than negative.
     y_ref, _, mask_1 = key_token_labels(nlp, domain, is_test=True)
     y_ref, _, mask_2 = key_token_pair_labels(nlp, domain, parts=10)
-    mask = mask_1 | mask_2
-    dataset = [e for e, is_used in zip(dataset, mask) if not is_used]
-
-    # Process only the predicted negative examples.
-    negative = y_ref == Sentiment.negative.value
-    dataset = [e for e, is_neg in zip(dataset, negative) if is_neg]
+    mask = ~(mask_1 | mask_2) & y_ref == Sentiment.negative.value
+    dataset = [e for e, is_correct in zip(dataset, mask) if is_correct]
 
     # Split a dataset because it's better to cache more freq.
     part, parts = part_parts
