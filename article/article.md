@@ -1,5 +1,5 @@
 
-** Do You Trust in Aspect-Based Sentiment Analysis? Test and Explain Model Behaviors **
+** Do You Trust in Aspect-Based Sentiment Analysis? Testing and Explaining Model Behaviors **
 #open-source #NLP #deep-learning #aspect-based-sentiment-classification
 
 
@@ -124,8 +124,8 @@ The aim is to classify the sentiments of a text concerning given aspects.
 We have made several assumptions to make the service more helpful.
 Namely, the text being processed might be a full-length document,
 the aspects could contain several words (so may be defined more precisely),
-and most importantly, the service provides an approximate explanation of any decision made, 
-therefore, a user is able to immediately infer reliability of a prediction.
+and most importantly, the service should provide an approximate explanation of any decision made, 
+therefore, a user will be able to immediately infer the reliability of a prediction.
 
 ```python
 import aspect_based_sentiment_analysis as absa
@@ -140,10 +140,10 @@ assert slack.sentiment == absa.Sentiment.positive
 ```
 
 Above is an example of how quickly you can start to benefit from our open-source package.
-All you need is to call the `load` function which sets up the ready-to-use pipeline `nlp`.
-You can explicitly pass the model name you wish to use (the list of available models is [here]), or a path to your model.
-In spite of simplicity of using fine-tuned models, we encourage you to build the custom model which reflects your data.
-The predictions will be more accurate and stable what we will discuss later on.
+All you need is to do is to call the `load` function which sets up the ready-to-use pipeline `nlp`.
+You can explicitly pass the model name you wish to use (a list of available models is [here]), or a path to your model.
+In spite of the simplicity of using fine-tune models, we encourage you to build a custom model which reflects your data.
+The predictions will be more accurate and stable, something which we will discuss later on.
 
 <br>
 
@@ -153,25 +153,25 @@ The predictions will be more accurate and stable what we will discuss later on.
 The pipeline provides an easy-to-use interface for making predictions.
 Even a highly accurate model will be useless if it is unclear how to correctly prepare the inputs and how to interpret the outputs.
 To make things clear, we have introduced a pipeline that is closely linked to a model.
-It is worth to know how to deal with the whole process, especially if you plan building the custom model.
+It is worth to know how to deal with the whole process, especially if you plan to build a custom model.
 
-```
-pre-process -> predict -> review -> post-process
-```
+<p align="middle">
+<img src="images/pipeline.png" width="600" alt=""/>
+</p>
 
 The diagram above illustrates an overview of the pipeline stages.
-As usual, at the very beginning, we pre-process the inputs.
-We convert the text and the aspects into the `task` which keeps well-prepared tokenized examples that we can then further encode and pass to the model.
+As usual, at the very beginning, we pre-process the raw inputs.
+We convert the text and the aspects into a `task` which keeps examples (pairs of a text and an aspect) that we can then further tokenize, encode and pass to the model.
 The model makes a prediction, and here is a change.
-Instead of directly post-processing model outputs, we have added the review process wherein 
+Instead of directly post-processing the model outputs, we have added a review process wherein 
 the independent component called the `professor` supervises and explains a model prediction.
-The professor might dismiss a model prediction if model internal states or outputs seem to be suspicious.
+The professor might dismiss a model prediction if the model internal states or outputs seem suspicious.
 In the next sections, we will discuss in detail how the model and the professor work.
 
 ````python
 import aspect_based_sentiment_analysis as absa
 
-name = 'absa/bert_abs_classifier-rest-0.1'
+name = 'absa/classifier-rest-0.1'
 model = absa.BertABSClassifier.from_pretrained(name)
 tokenizer = absa.BertTokenizer.from_pretrained(name)
 professor = absa.Professor(...)     # Explained in detail later on.
@@ -180,22 +180,23 @@ nlp = absa.Pipeline(model, tokenizer, professor, text_splitter)
 
 # Break down the pipeline `call` method.
 task = nlp.preprocess(text=..., aspects=...)
-input_batch = nlp.encode(task.tokenized_examples)
+tokenized_examples = nlp.tokenize(task.examples)
+input_batch = nlp.encode(tokenized_examples)
 output_batch = nlp.predict(input_batch)
-predictions = nlp.review(task, output_batch)
-completed_task = nlp.postprocess(task, output_batch, predictions)
+predictions = nlp.review(tokenized_examples, output_batch)
+completed_task = nlp.postprocess(task, predictions)
 ````
 
 Above is an example how to initialize the pipeline directly,
-and we revise in code the discussed process by exposing what calling the pipeline does under the hood.
-We try to omit a lot of insignificant details but one thing we would like to highlight.
+and we revise in code the process being discussed by exposing what calling the pipeline does under the hood.
+We have omitted a lot of insignificant details but there's one thing we would like to highlight.
 The sentiment of long texts tends to be fuzzy and neutral. 
-Therefore, you might want to split a document text into smaller independent chunks, spans. 
-These could include a single sentence or several sentences.
+Therefore, you might want to split a text into smaller independent chunks, sometimes called spans. 
+These could include just a single sentence or several sentences.
 It depends on how the `text_splitter` works. 
 In this case, we are using the SpaCy CNN model, which splits a document into single sentences, 
 and, as a result each sentence can then be processed independently.
-Note that longer spans have richer context information, so a model has more information to consider.
+Note that longer spans have richer context information, so a model will have more information to consider.
 Please take a look at the pipeline details [here].
 
 <br>
@@ -303,61 +304,61 @@ Test Model Behaviors
 
 In the table below, we present three exemplary tests that roughly estimate model limitations.
 To be consistent, we examined the BERT-ADA model introduced in the previous section.
-Test A checks how crucial is information about an aspect.
+Test A checks how crucial is information about an aspect to solve a task.
 We force a model to predict sentiment without providing aspects.
-The task then becomes a basic, aspect independent, sentiment classification.
+The task then becomes a basic, aspect independent, sentiment classification 
+(details are [here](analysis/aspect_without.py)).
 Test B verifies how a model considers an aspect. 
 The model predicts using (instead of correct) unrelated aspects; 
 manually selected and verified simple nouns that are not present in the dataset, even implicitly. 
-We process positive and negative examples, expecting to get neutral sentiment predictions.
+We process positive and negative examples, expecting to get neutral sentiment predictions
+(details are [here](analysis/aspect_condition.py)).
 Test C examines how precisely a model separates information about a requested aspect from other aspects.
 In the first case, we process positive and neutral examples
 wherein we add to texts a negative emotional sentence about a different aspect.
 For instance, "The {other aspect} is really bad." expecting that the model will persist in making its predictions, without any changes.
 In the second case, we process negative and neutral examples with an additional positive sentence "The {other aspect} is really great.".
-In both cases, we use verified unrelated aspects from test B.
-More concrete details about tests you find [here].
+In both cases, we use hand-crafted templates and verified unrelated aspects from test B
+(details are [here](analysis/aspect_separation.py)).
 
 ```
-Test Name                       | Acc. Laptop | Acc. Restaurant
----------------------------------------------------------------
-SemEval                         | 80.23       | 87.89
----------------------------------------------------------------
-Test A: Course-Grained          | 76.64       |
-Test B: Aspect as Constrain     | 10          |
-        a) negative             |
-        b) positive             |
-Test C: Add Emotional Sentence  |             | 
-        a) negative             | 78 -> 73 (-6.4%)  |
-        b) positive             | 74 -> 61 (-17.5%) |
+Test Name                            | Acc. Laptop     | Acc. Restaurant
+------------------------------------------------------------------------
+SemEval                              | 79.23           | 85.17
+------------------------------------------------------------------------
+Test A: Course-Grained               | 71.63           | 75.62
+Test B: Aspect Condition             | 35.94           | 40.54
+Test C: Add Emotional Sentence       |                 | 
+        a) Process pos/neu (add neg) | 66.42 (-13.58%) | 83.68 (-4.07%)
+        b) Process neg/neu (add pos) | 51.47 (-26.15%) | 55.34 (-12.52%)
 
-The test results of the BERT-ADA models.  
-The B and C tests were run 7 times for different unrelated aspects
-so we present means and standard deviations.
+The test results of the `classifier-rest-0.2` and the `classifier-lapt-0.2` models (the BERT-ADA architecture).
+More details in log files [here](analysis/logs).
 ```
 
-Test A confirms that the course-grained classifier achieves good results as well.
-Even if the aspect-based classifier performs better, the improvement is below 4%.
+Test A confirms that the course-grained sentiment classifier achieves good results as well (without any adjustments).
 This is not good news.
 If a model predicts a sentiment correctly without taking into account an aspect, roughly, 
 there is no gradient towards patterns that support aspect-based classification, and the model has nothing to improve in this direction.
-Consequently, at least 76% of the already limited dataset will not help to improve the aspect-based sentiment classification.
+Consequently, at least 70% of the already limited dataset will not help to improve the aspect-based sentiment classification.
 In addition, these examples might even be disruptive, because they could overwhelm examples which require multi-aspect consideration.
 Multi-aspect examples might be treated as outliers, and gentle erased due to averaging a gradient in a batch for example.
 
-Test B clearly demonstrates that a model may not truly solve the aspect-based condition, 
+Test B demonstrates that a model may not truly solve the aspect-based classification, 
 because it considers an aspect mainly as a feature, not as a constraint. 
-In 10% of cases, a model recognizes correctly that the text does not concern a given aspect, 
+In 35 and 40% of cases, a model recognizes correctly that the text does not concern a given aspect, 
 and returns a neutral sentiment instead of positive or negative. 
-The model's usefulness in terms of aspect-based classification is questionable. 
-One might conclude this directly from the model architecture because there is no dedicated mechanism that might impose such a constraint.
+The model's accurateness in terms of aspect-based classification is questionable. 
+One might conclude this directly from the model architecture because there is no dedicated mechanism that might impose the aspect-based condition.
 
-The test C is designed to prove that a model separates information about different aspects well. 
-In the above 80% of cases in both test variations, the model correctly deals with a basic multi-aspect problem, 
+The test C shows that a model separates information about different aspects well.
+The reference is given in brackets to emphasize how enriched texts decrease model performance of processing 
+a) positive/neutral and b) negative/neutral examples.
+In most cases, the model correctly deals with a basic multi-aspect problem, 
 and recognizes that an added sentence, highly emotional in the opposite direction, does not concern a given aspect. 
-Even if test B shows that the model is neglecting information about an unrelated aspect, 
+Even if test B shows that the model is neglecting in some cases information about an unrelated aspect, 
 this test reveals that an aspect is a really vital feature if a text concerns many aspects including the given aspect, 
-as well as whether the model needs to separate out information about different aspects.
+and the model needs to separate out information about different aspects.
 
 The model behavior tests, as exemplary above, can provide many valuable insights [checklist].
 Unfortunately, papers describing state-of-the-art models gently leave aside tests that may expose model limitations.
@@ -405,34 +406,36 @@ Firstly, we highlight how to start fixing the model limitations smoothly using t
 Coming back to the problem stated in test B, to avoid questionable predictions,
 we want to build an aux. classifier that predicts whether a text relates to an aspect or not.
 If there is no reference in a text to an aspect, the professor sets a neutral sentiment
-regardless of the model prediction (details [here]).
+regardless of the model prediction (details are [here]).
 
 ````python
 import aspect_based_sentiment_analysis as absa
 
-name = 'absa/basic_reference_recognizer-0.1'
+name = 'absa/basic_reference_recognizer-rest-0.1'
 recognizer = absa.aux_models.BasicReferenceRecognizer.from_pretrained(name)
 professor = absa.Professor(reference_recognizer=recognizer)
 ````
 
 Good practice is to gradually increase model complexity in response to demands.
-Because the reference recognition is a side problem, we can simplify the task. 
-We propose the simple aux. model `BasicReferenceRecognizer` 
-that only checks if an aspect is clearly mentioned in a text (details [here]).
-Even if the table below confirms an improvement, note that this is a simple test case.
+We propose the simple aux. model `BasicReferenceRecognizer` for now
+that only checks if an aspect is clearly mentioned in a text (model details are [here], the training is [here]).
+The table below confirms the significant improvement in Test B.
+Nonetheless, in most cases, there is a trade-off between the performance of different tests as it is here.
+Note that this is a simple test case.
 We encourage you, especially if it concerns your business, to construct more challenging tests
 wherein aspect mentions are more implicit.
 
 ```
-Name                            | Acc. Laptop | Acc. Restaurant
----------------------------------------------------------------
-Test B: Aspect as Constrain     | 10          | 11
----------------------------------------------------------------
-Test B: HotFix                  | 94          | 87
+Test Name       | Acc. Laptop      | Acc. Restaurant 
+------------------------------------------------------
+Semeval         | 79.00 (-0.98%)   | 83.13 (-2.41%)   
+Test B          | 74.41 (+106.51%) | 79.55 (+108.81%)
 
-The tests were run 7 times for different unrelated aspects
-so we present means and standard deviations.
-We set up the cosine similarity threshold 0.1 based on the training data.
+The test results of the `classifier-rest-0.2` and the `classifier-lapt-0.2` models 
+enhaced by the basic reference recognizer (the version 0.1).
+The recognizer parameters chosen based on the training data.
+The improvment of the model performance is given in brackets.
+More details in the log file [here](analysis/logs/aux-model-reference.log).
 ```
 
 <br>
@@ -471,16 +474,16 @@ subset of tokens (latent rationales) - ranking of single tokens - complex struct
 ----- pattern complexity ----->
 ```
 
-The key idea is to frame the problem of explaining a model decision as an independent task wherein
+The key concept is to frame the problem of explaining a model decision as an independent task wherein
 an aux. model, the `pattern recognizer`, predicts patterns given model inputs, outputs, and internal states.
-This is a flexible definition, so we will be able to test various recognizers in a longer perspective.
+This is a flexible definition, so we will be able to test various recognizers in the longer perspective.
 We can try to build model-agnostic pattern recognizer (independent with respect to the model architecture or parameters).
 We can customize inputs, for instance, take into account internal states or not,
 analyze a model holistically or derive conclusions from only a specific component.
 Finally, we can customize outputs, defining sufficient pattern complexity.
-Note that it is a challenge to design training and evaluation, because the true patterns are unknown.
+Note that it would be a challenge to design training and evaluation, because the true patterns are unknown.
 As a result, extracting complex patterns correctly is extremely hard.
-Nonetheless, there are a few successful ways to train a pattern recognizer that can reveal latent rationales.
+Nonetheless, there are a few successful methods to train a pattern recognizer that can reveal latent rationales.
 This is the case in which a pattern recognizer tries to mask-out as many input tokens as possible,
 constrained to keeping an original prediction (e.g. the `DiffMask` method [here], and perturbation-based methods [here]).
 
@@ -490,31 +493,32 @@ constrained to keeping an original prediction (e.g. the `DiffMask` method [here]
 
 <br>
 
-Due to the time constraint, we did not want to research and build a trainable pattern recognizer at first.
-Instead, we decided to start with a pattern recognizer that comes from our observations, prior knowledge.
+Due to time constraints, at first we did not want to research and build a trainable pattern recognizer.
+Instead, we decided to start with a pattern recognizer that originates from our observations, prior knowledge.
 The model, the aspect-based sentiment classifier, is based on the transformer architecture [here] wherein self-attention layers hold the most parameters.
 Therefore, one might conclude that understanding self-attention layers is a good proxy to understanding a model as a whole.
 Accordingly, there are many articles [here] that show how to explain a model decision 
 in simple terms, using attention values (internal states of self-attention layers) straightforwardly.
 Inspired by these articles, we have also analyzed attention values (processing training examples) to search for any meaningful insights.
-This exploratory study has led us to create the `BasicPatternRecognizer` (details in the appendix below and implementation [here]).
+This exploratory study has led us to create the `BasicPatternRecognizer` (details are in the appendix below and the implementation is [here]).
 
 ````python
 import aspect_based_sentiment_analysis as absa
 
 # This pattern recognizer doesn't have trainable parameters
-# so we can initialize it directly, without setting weights. 
+# so we can initialize it directly, without setting any weights. 
 recognizer = absa.aux_models.BasicPatternRecognizer()   
 professor = absa.Professor(pattern_recognizer=recognizer)
 
 # Examine the model decision.
 nlp = absa.Pipeline(..., professor=professor) # Set up the pipeline. 
-slack = nlp(text=..., aspects=['slack computer program'])
-absa.display(slack.review) # We use IPython so it works inside a notebook.
+completed_task = nlp(text=..., aspects=['slack computer program'])
+[slack] = completed_task.examples
+absa.display(slack.review) # It plots inside a notebook straightaway.
 ````
 
 <p align="middle">
-<img src="images/patterns.gif" width="600" alt=""/>
+<img src="images/patterns-price.png" width="600" alt=""/>
 </p>
 
 <br>
@@ -522,86 +526,116 @@ absa.display(slack.review) # We use IPython so it works inside a notebook.
 
 #### Verification of Explanation Correctness
 
-The explanations are useful if they are correct.
+The explanations are only useful if they are correct.
 To form the basic pattern recognizer, we have made several assumptions (prior beliefs),
-so we should be careful about interpreting explanations too literally.
-Even if attention values have thought-provoking properties, for example, 
-they encode rich linguistic relations [here], there is no proven chain of causation.
-There are a lot of articles that reveal various concerns why drawing conclusions about model reasoning
+therefore we should be careful about interpreting the explanations too literally.
+Even if the attention values have thought-provoking properties, for example, 
+they encode rich linguistic relationships [here], there is no proven chain of causation.
+There are a lot of articles that illustrate various concerns why drawing conclusions about model reasoning
 directly from attentions might be misleading [here].
-Even if patters seem to be reasonable, the critical thinking is the key.
-We need the quantitative analysis to truly measure how correct the explanations are.
-Unfortunately, like the training, the evaluation of a pattern recognizer is tough due to the fact that the true patterns are unknown.
-As a result, we are forced to validate only selected properties of predicted explanations.
-Keeping this article concise, we cover solely two tests but there are much more to do to assess reliability of explanations.
+Even if the patters seem to be reasonable, the critical thinking is the key.
+We need a quantitative analysis to truly measure how correct the explanations are.
+Unfortunately, as with the training, the evaluation of a pattern recognizer is tough due to the fact that the true patterns are unknown.
+As a result, we are forced to validate only selected properties of the predicted explanations.
+Keeping this article concise, we cover solely two tests but there is much more to do to assess the reliability of explanations.
 
 <br>
 
 ##### Verification of Explanation Correctness: Key Token Recognition Test
 
-There are several properties needed to keep an explanation consistent.
-For instance, the core token from the most important pattern should impact a model decision significantly.
-To confirm whether a pattern recognizer supports this intuitive property or not, we do a simple test. 
+There are many properties needed to keep an explanation consistent and reliable but one is fundamental. 
+The explanation should clearly indicate the most important (in terms of decision-making) token at least.
+To confirm whether the proposed `BasicPatternRecognizer` provides patterns that support this property or not, we can do a simple test. 
 
 ```
-[Pattern Recognizer] Patterns -> Most Important Pattern -> Key Token
-                                       [ ... ]              {fans}
+[Pattern Recognizer] Patterns -> [Predict] -> Key Token Prediction
+                                                   {fans}
 ```
 
-We mask in the input sequence directly the chosen based on an explanation token (e.g. fans), and observe if the model changes a decision or not.
-Note that an example might contain several `key tokens`, tokens that masked (independently) cause a change in the model prediction.
-We assume that the chosen token should belong to the group of key tokens if it is truly significant.
-This test is convenient because we are able to reveal the ground-truth (key tokens),
-solely checking `n` combinations (masking each token), needed to measure the test performance precisely.
+We mask in a text the most important (according to patterns) token, and observe if the model changes the decision or not.
+The example might contain several `key tokens`, tokens that masked (independently) cause a change in the model's prediction.
+The key assumption of this test is that the chosen token should belong to the group of key tokens if it is truly significant.
+
+```python
+import aspect_based_sentiment_analysis as absa
+
+patterns = ... # PredictedExample.review.patterns
+key_token_prediction = absa.aux_models.predict_key_set(patterns, n=1)
+```
+
+It is important to be aware that the key token prediction comes from a pattern recognizer indirectly.
+We set up a plain rule `predict_key_set` (details are [here]) that sums the weighted (by importance values) patterns, and predicts a key token (in this case).
+Moreover, note that the test is simple and convenient because we are able to reveal valid key tokens
+(checking only `n` combinations at most) needed to measure the test performance precisely.
 
 ```
-Pattern Recognizers      | Acc. Laptop | Acc. Restaurant
+Pattern Recognizers  | Acc. Laptop     | Acc. Restaurant
+                     | Train  | Test   | Train  | Test
+                     | 10.33% | 23.82% | 16.88% | 26.43%
 --------------------------------------------------------
-Random                   | 10          |
-Attention                | 31          |
-Gradient                 | 15          |
---------------------------------------------------------
-Basic                    | 52          |
+Random               |  6.28  | 18.42  |  8.39  | 11.15
+Attention            | 36.82  | 44.08  | 29.93  | 32.77
+Gradient             | 14.64  | 16.45  | 24.84  | 26.69
+*Basic*              | 53.14  | 55.26  | 73.52  | 62.16
 
-Key token recognition based on an explanation provided by a pattern recognizer. 
-Evaluated on test examples that have at least one key token (34%).
+The key token recognition based on an explanation provided by a pattern recognizer. 
+Evaluated on examples that have at least one key token.
+The percents under the dataset names describe the amount of examples that contain a key token within each dataset.
+More details in the log file [here](analysis/logs/recognition_key_token.log).
 ```
 
-In the table above, we compare four exemplary pattern recognizers (see the appendix below to understand recognizer details).
-To sum up, 17% of the test examples have at least one key token (others we filter out).
-Of those, in 52% of cases, the chosen token based on an explanation from the basic pattern recognizer is the key token.
-From this perspective, the basic patter recognizer is far more precise that other methods (more details and implementation [here]).
+In the table above, we compare four pattern recognizers (details of other recognizers are [here]).
+For example, around 24% of the laptop test examples have at least one key token (others we filter out).
+Of those, around 55% of cases, the chosen token based on an explanation from the basic pattern recognizer is the key token.
+From this perspective, the basic patter recognizer is more precise that other methods (test details are [here]).
+It's interesting that test datasets have significantly more examples that contain a key token
+what suggests that model reasoning is different during processing known and unknown examples.
+In the next sections, we further analyse pattern recognizers solely on more reliable test datasets.
 
 <br>
 
 ##### Verification of Explanation Correctness: Key Pair Recognition Test
 
 The truth is that we cannot truly assess correctness of explanations evaluating only a single token.
-Therefore, to make this verification more reliable, we do the second test 
-wherein we check whether a pair of two core tokens from the most important pattern 
-convey the information about the essential (in terms of the decision-making) relation between tokens.
+Therefore, to make this verification more reliable, we do the second similar test.
+The aim is to predict the `key pair of tokens`, a pair that masked causes a change in the model prediction .
 
 ```
-[Pattern Recognizer] Patterns -> Most Important Pattern ->   Key Pair
-                                       [ ... ]             {fans, slack}
+[Pattern Recognizer] Patterns -> [Predict] ->   Key Pair
+                                              {fans, slack}
 ```
 
-We do a similar recognition test but now the aim is to predict the `key pair of tokens`,
-a pair that masked causes a change in the model prediction.
-In contrast to the previous test, now it is much harder to check all pair combinations
-to retrieve the ground-truth needed to measure the test performance.
-Usually it is practically impossible to do so, and this is the unfortunate implication of unknown model reasoning.
-We can compare pattern recognizer, but we cannot say exactly how accurate they are (in most test cases).
+In the table below, we compare four pattern recognizers similarly as we have done in the previous test.
+For example, around 41% of the restaurant test examples have at least one key token pair (others we filter out).
+Of those, around 49% of cases, the chosen token pair from the basic pattern recognizer is the key pair of tokens.
+The basic basic patter recognizer is still the most accurate but the advantage over other methods has been diminished. 
+Note that this test covers the previous key token test, therefore, results are correlated.
+
+```
+Pattern Recognizers | Acc. Laptop | Acc. Restaurant
+                    | 41.07%      | 41.52%
+---------------------------------------------------
+Random              | 14.89       | 11.61
+Attention           | 40.46       | 36.56
+Gradient            | 17.94       | 21.94
+*Basic*             | 50.00       | 49.25
+
+The recognition of the key pair of tokens based on an explanation provided by a pattern recognizer. 
+Evaluated on examples that have at least one key token pair.
+The percents under the dataset names describe the amount of examples that contain a key token pair within each dataset.
+More details in the log file [here](analysis/logs/recognition_key_token_pair.log).
+```
+
+Usually it is practically impossible to retrieve ground truth (existing too many combinations to check out), 
+and this is the unfortunate implication of unknown model reasoning.
+We cannot say exactly how accurate pattern recognizers are (in most test cases) but still we can compare them.
+Below, we check correctness of the basic pattern recognizer by comparing against other methods.
+This is the alternative approach how the performance of a pattern recognizer might be verified.
 
 <p align="middle">
-<img src="images/confusion_matrix.svg" width="600" alt=""/>
+<img src="images/confusion-matrix-restaurant.svg" width="600" alt=""/>
 </p>
 
-<br>
-
-Above, we check correctness of the basic pattern recognizer against other methods.
-We benefit from the previous test to withdraw examples (17%) that have at least one key token.
-Therefore, we are sure that a decision flip is caused by a key pair, not one token from a pair.
 In matrices, on-diagonal values illustrate cases wherein recognizers behave similarly.
 In these cases, both recognizers choose a pair that masked either flips a model decision (the bottom-right cell) or does not (the upper-left cell).
 Off-diagonal values are more revealing because they expose differences.
@@ -609,9 +643,10 @@ The bottom-left cell counts examples wherein the basic recognizer uncovers a key
 while another recognizer does not, and the other way around (the upper-right cell).
 The upper-right value is also helpful to estimate how precise (at most) is the basic recognizer.
 To sum up, the basic recognizer aims to maximize the bottom-left and minimize the upper-right values.
-From this perspective as well, the basic patter recognizer stands out from other methods (details and implementation [here]).
+From this perspective as well, the basic patter recognizer stands out from other methods (test details are [here]).
 
 <br>
+
 
 #### Inferring from Explanations: Complexity of Model Reasoning
 
@@ -625,66 +660,75 @@ in contrast to reviewing them individually what might be misleading.
 
 <br>
 
-Assuming that more complex structures engage more tokens (e.g. more relations potentially),
+Assuming (roughly) that more complex structures engage more tokens (e.g. more relations potentially),
 we approximate complexity of model reasoning by the number of tokens crucial to make a decision.
 We assume that crucial tokens are the `minimal key set of tokens`, 
 the minimal set of tokens that masked (altogether) cause a change in the model prediction.
 As a result, we estimate the complexity using key sets that provide implicitly a patter recognizer.
 
-```
-[Model]-[Patter Recognizer] -> Patterns -> [Rule] -> Minimal Key Set
-```
+<br>
 
-It is important to be aware that the minimal key set comes from a pattern recognizer indirectly.
-We set up a basic rule that based on patterns predicts a key set.
-In the last section, reviewing two basic properties of patterns, we've already set up two specific rules.
-We assume that the most important pattern should have either the most important token (the key token) or the pair of tokens (the key pair).
-Now, we formulate the general rule (see details [here]) that summarizes all patterns, and proposes the key set of a given size `n` (not only 1 or 2).
-
-```python
-import aspect_based_sentiment_analysis as absa
-
-patterns = ...
-key_set_candidate = absa.aux_models.predict_key_set(patterns, n=3)
-```
-
-The rule provides a key set of a given size that is only a candidate.
+In this analysis, we benefit from the rule used in the last two tests that predicts (based on patterns) a key set of a given size `n`.
 To make this exemplary study clear, we want to be sure that analysing key sets are valid (cause a decision change).
 Therefore, we introduce a simple policy that includes a validation.
-Namely, starting with the `n=1`, we iterate through candidates assuming that the first valid candidate is minimal.
-We validate a candidate by calling a model with the masked tokens (that belong to this set) expecting a decision change.
-Note that it's a prediction that the chosen key set is minimal.
+Namely, starting with the `n=1`, we iterate through key set predictions assuming that the first valid prediction is minimal.
+We validate a prediction by calling a model with the masked tokens (that belong to this set) expecting a decision change (details are [here]).
 
 ```
-Patterns -> [Rule] -> Key Set Candidate -> [Validate] -> Minimal Key Set Prediction
+Patterns -> [Rule] -> Key Set Prediction -> [Validate] -> Minimal Key Set Prediction
                         <- `n+1`
 ```
 
-The chart below presents the summary of model reasoning in terms of complexity.
-As we said, the complexity is approximated by the number of crucial tokens (the minimal key set) that we infer from patterns using the rule and policy.
-In the first case, the key set contains one token that is simply the key token.
-Therefore, the values for the argument one reflects exactly the key token (first) recognition test.
-For instance in laptops, the basic pattern recognizer predicts correctly 52% of time in 17% of the total.
-In the next case, the key set contains two tokens, the key pair.
-In contrast to the key pair (second) test wherein before a prediction we filter out examples that have a key token,
-now, the pattern recognizer works independently, without prior knowledge.
-The values (on the chart and in the test) might differ because there is no guarantee that inferred key sets are minimal (e.g. some key pairs might cover overlooked key tokens).
-To have the broader context, we retrieve and show up the ground-truth of the key pair test as well (details [here]).
+The chart below (on the left) presents the summary of model reasoning in terms of complexity.
+As we said, the complexity is approximated by the number of crucial tokens (the minimal key set) that we infer from patterns using the plain rule and policy.
+
+
+The plot presents analysis on restaurant test negative examples (others are [here]).
+Because the dataset is not balanced (positive examples dominate), 
+the model tend to classify masked examples as positive rather than neutral.
+This clearly demonstrates the confusion matrix on the right that keeps in rows original predictions, 
+and in columns predictions after masking (using a key set that contains either one, two or three tokens).
+Look at the second row of originally predicted negative examples.
+It is suspicious that so many examples after masking single tokens changes sentiment to positive.
+Furthermore, we do the more precise analysis, and it's turn out that almost fully masked examples remain positive.
+Here we show up negative examples because if we show up positives that dominate,
+and it's hard to change its sentiment the picture is fuzzy and unclear.
+Both laptop and restaurant dataset domains have the same problem.
+
 
 ```
-Tokens 1... 5+ 
-- the ground-truth / first two columns (green) 
-- the base recognizer (light gray with contours)
+Basic:                                 y_hat Masked
+[0.366 0.091 0.069 0.474]             [[ 74  13  51],  
+Max scores:                    y_hat   [ 40  67  68],   
+[0.497 0.24  0.137 0.126]              [163  56 588]]   
 
-The model reasoning complexity within test datasets (laptops and restaurants)
-approximated by the probability mass function of the number of tokens in the minimal key sets.
+
+On the left, the probability mass function of the number of tokens in the minimal key sets.
+Evaluated on restaurant test negative examples.
+On the right, the confusion matrix that shows how model changes 
+a class of a prediction after masking a key set.
 ```
 
-The model usually uses few tokens to make a decision, it rarely triggers off on single tokens.
-The decision in more than half cases is based on simple patterns (one or two tokens) 
-but the significant number of examples belongs to last `5+` group what seems suspicious.
-Reviewing this group we quickly note that the model returns positive sentiments for almost completely masked input sequences.
-In an appendix, to clearly observe this limitation, we compare complexity of model reasoning separating positive and negative examples.
+The decision in around 74% of cases is based on simple patterns (one or two tokens in key sets).
+The pattern recognizer is not perfect.
+
+The last column shows than in 47% of cases it cannot find a key token set.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 <br>
 
@@ -694,6 +738,7 @@ The more precise recognizer would try to push the predicted distribution towards
 therefore, without the ground-truth, still we can reveal valuable insights about a model.
 Nonetheless, it is easier to notice them if patterns and inferred key sets are more precise. 
 In the appendix, we compare different pattern recognizers, and the basic pattern recognizer clearly outperforms other methods.
+
 
 ```
 Monitor Model Behaviors
