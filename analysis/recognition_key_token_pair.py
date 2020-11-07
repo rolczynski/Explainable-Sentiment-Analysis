@@ -13,7 +13,6 @@ from joblib import Memory
 
 from . import extension
 from . import utils
-from . import plots
 from .recognition_key_token import mask_tokens
 
 
@@ -149,7 +148,7 @@ def experiment(models: Dict[str, str], save_confusion_matrix: bool = True):
             results.append(result)
 
         if save_confusion_matrix:
-            plots.confusion_matrix.save_figure(results, domain)
+            analysis.plots.confusion_matrix.save_figure(results, domain)
 
         logger.info(
             f'{domain.upper()} DOMAIN\n'

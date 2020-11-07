@@ -14,7 +14,6 @@ from joblib import Memory
 
 from . import extension
 from . import utils
-from . import plots
 from .recognition_key_token import mask_tokens
 from .recognition_key_token import retrieve_labels \
     as key_token_labels
