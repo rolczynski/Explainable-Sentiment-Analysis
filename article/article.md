@@ -3,15 +3,15 @@
 #open-source #NLP #deep-learning #aspect-based-sentiment-classification
 
 
-The article aims to highlight the need for testing and explaining model behaviors.
-We published the open-source `aspect_based_sentiment_analysis` package where
-the key idea is to build the pipeline which supports explaining model predictions.
-We introduce the independent component called the professor that supervises and explains model predictions.
-The professor's main role is to provide explanations of model decisions that enhance control over the model.
-We benefit from explanations to understand an individual prediction (we've built an exemplary GUI 
-to clearly present this advantage) but also to infer the general characteristics of model reasoning.
-We truly believe that testing and explaining model behaviors fuels further development,
-and making models useful in the real-world applications.
+This article aims to highlight the need for testing and explaining model behaviors.
+We have published an open-source `aspect_based_sentiment_analysis` package where
+the key idea is to build a pipeline which supports explanations of model predictions.
+We have introduced an independent component called the professor that supervises and explains model predictions.
+The professor's main role is to provide explanations of model decisions that will enhance control over the model.
+Although we can benefit from explanations to understand individual predictions (we've built an exemplary GUI 
+to clearly present this advantage), we can also infer general characteristics of model reasoning.
+We truly believe that testing and explaining model behaviors can fuel further development,
+and make models more useful within real-world applications.
 
 <br>
 
@@ -35,85 +35,71 @@ Conclusions
 
 #### Introduction
 
-The Natural Language Processing is in the spotlight.
-This is mainly caused by the stunning capabilities of the modern language models.
-They transform text into meaningful vectors that approximate human text understanding,
-therefore, the computer programs can analyze texts (documents, mails, tweets etc.) roughly alike human beings do.
-The language models fuel the NLP community to build many other, more precise models that
-aim to solve specific problems, for example, the sentiment classification.
-The community build up the open-source projects that provide easy access to countless fine-tune models.
-Unfortunately, the usefulness of the majority of them is questionable in the real-world applications.
+Natural Language Processing is in the spotlight at the moment.
+This is mainly due to the stunning capabilities of modern language models.
+They can transform text into meaningful vectors that approximate human understanding of text.
+As a result, computer programs can now analyze texts (documents, mails, tweets etc.) roughly the same as people do.
+Extreme power of modern language models has fueled the NLP community to build many other, more specialized models that
+aim to solve specific problems, for example, sentiment classification.
+The community has built up open-source projects that provide easy access to countless finely-tuned models.
+Unfortunately, the usefulness of the majority of them is questionable when it comes to real-world applications.
 
 <br>
 
-The ML models are powerful because they approximate the desired transformation,
-the mapping between the inputs and outputs, directly from data.
-By design, the model collects any correlations in data useful to make a correct mapping.
-This free of restrictions simple rule forms the complex model reasoning
-that enables to approximate any logic behind the transformation.
-It is the big advantage of the ML models, especially in cases wherein the transformation is intricate and vague.
-However, the free of restrictions process of forming the model reasoning is the major headache 
-at the same time because it is problematic to keep control of the model.
+ML models are powerful because they approximate the desired transformation, mapping between inputs and outputs, directly from the data.
+By design, the model collects any correlations in the data that are useful for making the correct mapping.
+This simple restriction-free rule forms the complex model reasoning that enables approximation of any logic behind the transformation.
+This is the big advantage of ML models, especially in cases in which the transformation is intricate and vague.
+However, this restriction-free process of forming model reasoning can also be a major headache 
+because it can be problematic when it comes to keeping control of the model.
 
-```
-Test and Explain Model Behaviors
-```
+<p align="middle">
+<img src="images/png/1.1-introduction.png" width="600" alt=""/>
+</p>
 
-It is hard to force a model to capture a general problem (e.g. the sentiment classification).
-solely by asking for solving a task, the common evaluation task (e.g. SST-2) 
-or the custom-built task based on the labeled (sampled from production) data.
+It is hard to force any model to capture a general problem (e.g. sentiment classification)
+solely by asking it to solve a specific task, a common evaluation task (e.g. SST-2) 
+or a custom-built task based on labeled (sampled from production) data.
 This is because the model discovers any useful correlations, 
-no matter they describe well a general problem and make sense for human beings
-or they are exclusively effective in solving a particular task.
-Unfortunately, the second group of adverse correlations that encode dataset specifics causes 
-the unpredictable model behavior on data even slightly different than used in a training.
-Due to this unpleasant nature of the ML models, it is important to test how the model behavior is consistent with the expected behavior.
-It is a vital problem because a model working in the real-world application is exposed to process data changing in time. 
+no matter they describe a general problem well and make sense to human beings
+or whether they are just exclusively effective in solving a specific task.
+Unfortunately, this second group of adverse correlations that encode dataset specifics can cause 
+unpredictable model behavior on data that may be even just slightly different than used in a training.
+Due to this unfortunate nature of ML models, it is important to test how a model behavior is consistent with expected behavior.
+This is crucial because a model working in a real-world application is exposed to process data that is changing in time. 
 
-```
-circular gradient and polygon inside 
-left inside (green)     right outside (red)
-stable                  unstable
---- true logic
-the space of behaviors, a single dot stands for a single specific model behavior 
-```
+<br>
 
-The visualization above presents the abstract interpretation of model behaviors.
-The plot shows up two models, the stable that is consistent with the expected behavior (on the left) 
-and unstable that carries the bias of the reasoning (on the right).
-The dots illustrate the highly scattered model reasoning, 
-and the polygon stands for tests that roughly approximate the space of the expected behavior.
-The bigger polygon means more tests that cover more of the desired behavior.
-Before serving a model, the bottom line is to form valuable tests that stretch the space of the expected behavior,
-and confirm whether model reasoning fills this space or not (via test scores).
-In this imaginary case, the model on the left better meets test conditions, therefore, it is more stable.
-Note that in the real scenario it is unknown what is beyond test boundaries.
-Unfortunately, as long as neural networks form the reasoning without restrictions,
-we cannot be sure that the model will behave according to our expectation in all cases (even if it satisfies all tests).
-Nonetheless, the risk of the unexpected behavior can and should be minimized. 
+Before serving a model, the bottom line is to form valuable tests that 
+confirm whether the model reasoning satisfied our expectations or not.
+As a result, the model that meets test conditions is stable in test boundaries at least.
+Note that it is unknown what is beyond the test boundaries.
+Unfortunately, as long as neural networks form reasoning without restrictions,
+we cannot be sure that the model will behave according to our expectations in every case (even if it satisfies all of the tests).
+Nonetheless, the risk of unexpected behavior can and should be minimized. 
 
-```
---- Model - Professor ---
-```
+<p align="middle">
+<img src="images/png/1.2-introduction.png" width="600" alt=""/>
+</p>
 
-The tests assure us that the model works properly at the time of the deployment.
-Commonly, the performance starts decline in time so it's vital to monitor the model once it's served.
+The tests assure us that the model is working properly at the time of the deployment.
+Commonly, performance starts decline in time so it's vital to monitor the model once it's served.
 It is hard to track unexpected model behaviors having only a prediction,
-therefore, the proposed pipeline is enriched by the additional component called the professor.
+therefore, the proposed pipeline is enriched by an additional component called the professor.
 The professor reviews model internal states, supervises the model, 
 and provides explanations of model predictions that help to reveal suspicious behaviors.
-The explanations not only give more control over the served model but also enhances further development. 
-The analysis of explanations leads to form new demanding tests that force a model to improve.
+The explanations not only give us more control over the served model but also enhance further development. 
+The analysis of explanations can lead to the formation of newer more demanding tests that force a model to improve.
 
-```
-test -> serve -> explain
-```
+<p align="middle">
+<img src="images/png/1.3-introduction.png" width="600" alt=""/>
+</p>
 
-We believe that both testing and explaining model behaviors are important in building the production-ready stable ML models.
-This is especially important in cases wherein the huge model is fine-tuned on the modest dataset
-because, due to the nature of ML models, we have problems to define precisely the desired task. 
-It is a vital problem among many down-stream NLP tasks.
-In this article, we focus on the aspect-based sentiment classification.
+We believe that both testing and explaining model behaviors are important in building production-ready stable ML models.
+This is especially important in cases wherein a huge model is fine-tuned on a modest dataset
+because, due to the nature of ML models, we have problems to define the desired task precisely. 
+This is a fundamental problem among many down-stream NLP tasks.
+In this article, we focus on aspect-based sentiment classification.
 
 <br>
 
@@ -141,7 +127,9 @@ assert slack.sentiment == absa.Sentiment.positive
 
 Above is an example of how quickly you can start to benefit from our open-source package.
 All you need is to do is to call the `load` function which sets up the ready-to-use pipeline `nlp`.
-You can explicitly pass the model name you wish to use (a list of available models is [here]), or a path to your model.
+You can explicitly pass the model name you wish to use (a list of available models is 
+[here](https://github.com/ScalaConsultants/Aspect-Based-Sentiment-Analysis/blob/master/README.md#ready-to-use-models)),
+or a path to your model.
 In spite of the simplicity of using fine-tune models, we encourage you to build a custom model which reflects your data.
 The predictions will be more accurate and stable, something which we will discuss later on.
 
@@ -156,12 +144,13 @@ To make things clear, we have introduced a pipeline that is closely linked to a 
 It is worth to know how to deal with the whole process, especially if you plan to build a custom model.
 
 <p align="middle">
-<img src="images/pipeline.png" width="600" alt=""/>
+<img src="images/png/2.1-pipeline.png" width="600" alt=""/>
 </p>
 
 The diagram above illustrates an overview of the pipeline stages.
 As usual, at the very beginning, we pre-process the raw inputs.
-We convert the text and the aspects into a `task` which keeps examples (pairs of a text and an aspect) that we can then further tokenize, encode and pass to the model.
+We convert the text and the aspects into a `task` which keeps examples (pairs of a text and an aspect) 
+that we can then further tokenize, encode and pass to the model.
 The model makes a prediction, and here is a change.
 Instead of directly post-processing the model outputs, we have added a review process wherein 
 the independent component called the `professor` supervises and explains a model prediction.
@@ -197,50 +186,54 @@ It depends on how the `text_splitter` works.
 In this case, we are using the SpaCy CNN model, which splits a document into single sentences, 
 and, as a result each sentence can then be processed independently.
 Note that longer spans have richer context information, so a model will have more information to consider.
-Please take a look at the pipeline details [here].
+Please take a look at the pipeline details 
+[here](https://github.com/ScalaConsultants/Aspect-Based-Sentiment-Analysis/blob/master/aspect_based_sentiment_analysis/pipelines.py#L200).
 
 <br>
 
 
 #### Model: Heart of the Pipeline
 
-The heart of the pipeline is the machine learning model.
+The core component of the pipeline is the machine learning model.
 The aim of the model is to classify the sentiment of a text for any given aspect.
-This is challenging because the sentiment is frequently meticulously hidden.
-Nonetheless, before we jump into model details, we will look closely into 
-how we have approached the task in the past, what the language model is, and why it makes a difference.
+This is challenging because sentiment is frequently meticulously hidden.
+Nonetheless, before we jump into the model details, we will look more closely into 
+how we have approached this task in the past, what the language model is, and why it makes a difference.
 
-The model is a function that maps the input to the desired output.
+<br>
+
+The model is a function that maps input to a desired output.
 Because this function is unknown, we try to approximate it using data.
 It is hard to build a dataset that is clean and big enough (for NLP tasks in particular) to train a model directly in a supervised manner.
-Therefore, the basic approach to solving this problem, and to overcoming the lack of a sufficient amount of data, is to construct hand-crafted features.
+Therefore, the most basic approach to solving this problem, and to overcoming the lack of a sufficient amount of data, is to construct hand-crafted features.
 Engineers extract key tokens, phrases, n-grams, and train a classifier to assign weights on how likely these features are to be either positive, negative or neutral.
 Based on these human-defined features, a model can then make predictions (that are fully interpretable).
-This is a valid approach, popular in the past.
-However, such simple models cannot precisely capture complexity of the natural language, and as a result, they quickly reach the limit of their accurateness.
+This is a valid approach, pretty popular in the past.
+However, such simple models cannot precisely capture complexity of the natural language, and as a result, 
+they can quickly reach the limit of their accurateness.
 This is a problem which is hard to overcome.
 
-```
-feature engineering vs. lanugage model
-```
+<p align="middle">
+<img src="images/png/3.1-feature-vs-model.png" width="600" alt=""/>
+</p>
 
-We have made a breakthrough when we started to transfer knowledge from language models to down-stream, more specific, NLP tasks.
-Nowadays, it has slowly become the standard that the key component of the modern NLP application is the language model.
-Briefly, the language model serves rough understanding of the natural language.
+We made a breakthrough when we started to transfer knowledge from language models to down-stream, more specific, NLP tasks.
+Nowadays, it is a standard that the key component of the modern NLP application is the language model.
+Briefly, a language model gives a rough understanding of natural language.
 In computational heavy training, it processes enormous datasets, such as the entire Wikipedia or more, to figure out relationships between words.
 As a result, it is able to encode words, meaningless strings, into vectors rich in information.
-Because encoded-words, context-aware embeddings, live in the same continuous space, we can manipulate them effortlessly.
+Because encoded-words, context-aware embeddings, are living in the same continuous space, we can manipulate them effortlessly.
 If you wish to summarize a text, for example, you might sum vectors; compare two words, make a dot product between them, etc.
 Rather than using feature engineering, and the linguistic expertise of engineers (implicit knowledge transfer),
-we benefit from the language model as a ready-to-use, portable, and powerful features provider.
+we can benefit from the language model as a ready-to-use, portable, and powerful features provider.
 
-Within this context, we are ready to define the SOTA model, both powerful and simple.
+Within this context, we are ready to define the SOTA model, which is both powerful and simple.
 The model consists of the language model `bert`, which provides features, and the linear `classifier`.
-From among variety of language models, the BERT is used,
-because we can benefit directly from BERT's next-sentence prediction to formulating the task as the sequence-pair classification. 
-As a result, an example is described as one sequence in the form: "[CLS] text subtokens [SEP] aspect subtokens [SEP]". 
-The relationship between a text and an aspect is encoded into the [CLS] token. 
-The classifier just makes a linear transformation of the final special [CLS] token representation.
+From among variety of language models, we use BERT,
+because we can benefit directly from BERT's next-sentence prediction to formulate the task as a sequence-pair classification. 
+As a result, an example is described as one sequence in the form: `[CLS] text subtokens [SEP] aspect subtokens [SEP]`. 
+The relationship between a text and an aspect is encoded into the `[CLS]` token. 
+The classifier just makes a linear transformation of the final special `[CLS]` token representation.
 
 ````python
 import transformers
@@ -258,15 +251,18 @@ model = absa.BertABSClassifier.from_pretrained(name)
 model = transformers.TFBertForSequenceClassification.from_pretrained(name)
 ````
 
-Even if it is rather outside the scope of this article, note how to train the model from scratch. 
+Even if it is rather outside the scope of this article, note how we can train the model from scratch. 
 We start with the original BERT version as a basis, and we divide the training into two stages. 
 Firstly, due to the fact that BERT is pretrained on dry Wikipedia texts, 
 we bias the language model towards more informal language (or a specific domain). 
 To do this, we select raw texts close to the target domain and do a self-supervised language model post-training. 
-The routine is the same as for the pre-training but we need to carefully set up the optimization parameters.
+The routine is the same as the pre-training but we need to carefully set up the optimization parameters.
 Secondly, we do regular supervised training. 
 We train the whole model jointly, the language model and the classifier, using a fine-grained labeled dataset.
-More details about the model [here] and training [here].
+There are more details about the model 
+[here](https://github.com/ScalaConsultants/Aspect-Based-Sentiment-Analysis/blob/master/aspect_based_sentiment_analysis/models.py#L118)
+and training 
+[here](https://github.com/ScalaConsultants/Aspect-Based-Sentiment-Analysis/blob/master/examples/train_classifier.py#L51).
 
 <br>
 
@@ -681,64 +677,37 @@ Patterns -> [Rule] -> Key Set Prediction -> [Validate] -> Minimal Key Set Predic
 
 The chart below (on the left) presents the summary of model reasoning in terms of complexity.
 As we said, the complexity is approximated by the number of crucial tokens (the minimal key set) that we infer from patterns using the plain rule and policy.
-
-
-The plot presents analysis on restaurant test negative examples (others are [here]).
-Because the dataset is not balanced (positive examples dominate), 
+The plot presents model reasoning on restaurant test predicted-negative examples (other plots are [here]).
+Because the dataset is unbalanced (positive examples dominate), 
 the model tend to classify masked examples as positive rather than neutral.
-This clearly demonstrates the confusion matrix on the right that keeps in rows original predictions, 
-and in columns predictions after masking (using a key set that contains either one, two or three tokens).
-Look at the second row of originally predicted negative examples.
-It is suspicious that so many examples after masking single tokens changes sentiment to positive.
-Furthermore, we do the more precise analysis, and it's turn out that almost fully masked examples remain positive.
-Here we show up negative examples because if we show up positives that dominate,
-and it's hard to change its sentiment the picture is fuzzy and unclear.
-Both laptop and restaurant dataset domains have the same problem.
-
+This clearly demonstrates the confusion matrix on the right that keeps original sentiment predictions in rows, 
+and sentiment predictions after masking in columns.
+Look at the second row of predicted negative examples.
+Many examples after masking (either one, two or three tokens) change sentiment to positive.
+We investigate them and other positive predictions, and it's turn out that almost fully masked examples remain positive.
+Therefore, the analysis of predicted-negative examples is more informative
+because predictions of positive sentiment would appear in the last column obscuring the overall picture.
+The problem occurs in both laptop and restaurant dataset domains.
 
 ```
-Basic:                                 y_hat Masked
-[0.366 0.091 0.069 0.474]             [[ 74  13  51],  
-Max scores:                    y_hat   [ 40  67  68],   
-[0.497 0.24  0.137 0.126]              [163  56 588]]   
+Basic:                                         y_hat masked
+[0.366 0.091 0.069 0.474]            neutral  [[ 74  13  51],  
+Max scores:                    y_hat negative  [ 40  67  68],   
+[0.497 0.24  0.137 0.126]            positive  [163  56 588]]   
 
 
 On the left, the probability mass function of the number of tokens in the minimal key sets.
-Evaluated on restaurant test negative examples.
-On the right, the confusion matrix that shows how model changes 
-a class of a prediction after masking a key set.
+Evaluated on restaurant test predicted-negative examples.
+On the right, the confusion matrix that shows how a model changes a prediction after masking a key set of tokens
+(using a key set that contains either one, two or three tokens chosen based on patterns provided by the basic pattern recognizer).
 ```
 
-The decision in around 74% of cases is based on simple patterns (one or two tokens in key sets).
-The pattern recognizer is not perfect.
-
-The last column shows than in 47% of cases it cannot find a key token set.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<br>
-
-The ground-truth in this analysis is helpful but not crucial.
-The true distribution is unknown but it is right-side bounded by the predicted distribution.
+The decision in around 74% of cases is based on simple patterns wherein one or two masked tokens are enough to change a model's prediction.
+The basic pattern recognizer provides rough understanding but it is far from being perfect.
+The last column shows than in 47% of cases it cannot find (misclassified) a valid key token set.
+Note that the ground truth is helpful but not crucial.
 The more precise recognizer would try to push the predicted distribution towards left-hand side,
-therefore, without the ground-truth, still we can reveal valuable insights about a model.
-Nonetheless, it is easier to notice them if patterns and inferred key sets are more precise. 
-In the appendix, we compare different pattern recognizers, and the basic pattern recognizer clearly outperforms other methods.
-
+therefore, without ground truth, still we can reveal valuable insights about a model.
 
 ```
 Monitor Model Behaviors
@@ -747,8 +716,8 @@ Monitor Model Behaviors
 The analysis is done outside of the pipeline (offline), to keep it clear.
 However, it can be easily adjusted to online monitoring of model behaviors.
 The key change concerns the number of additional calls to a model (preferable no calls).
-Instead of using the crude rule and policy, one can build another model that based on patterns (or internal model states) predicts 
-whether an example has e.g. a key token or the key set of four tokens, without any extra calls to a model for verifications.
+Instead of using a pain rule and policy, one can build another model that based on patterns (or internal model states) predicts 
+whether an example has e.g. a key token or a key set of four tokens, without any extra calls to a model for verifications.
 As a result, monitoring does not interfere with the model inference efficiency.
 The essences of this section is that we are able to track model behaviors e.g. complexity, and react if something goes wrong (or just changes rapidly).
 
