@@ -160,7 +160,7 @@ In the next sections, we will discuss in detail how the model and the professor 
 ````python
 import aspect_based_sentiment_analysis as absa
 
-name = 'absa/classifier-rest-0.1'
+name = 'absa/classifier-rest-0.2'
 model = absa.BertABSClassifier.from_pretrained(name)
 tokenizer = absa.BertTokenizer.from_pretrained(name)
 professor = absa.Professor(...)     # Explained in detail later on.
@@ -251,7 +251,7 @@ model = absa.BertABSClassifier.from_pretrained(name)
 model = transformers.TFBertForSequenceClassification.from_pretrained(name)
 ````
 
-Even if it is rather outside the scope of this article, note how we can train the model from scratch. 
+Even if it is rather outside the scope of this article, note how to train the model from scratch. 
 We start with the original BERT version as a basis, and we divide the training into two stages. 
 Firstly, due to the fact that BERT is pretrained on dry Wikipedia texts, 
 we bias the language model towards more informal language (or a specific domain). 
@@ -267,142 +267,129 @@ and training
 <br>
 
 
-#### Awareness of Model Limitations
+#### Awareness of the Model Limitations
 
-In the previous section, we presented an example of the modern NLP architecture wherein the core component is the language model.
-We abandoned the task specific and time consuming feature engineering.
+In the previous section, we presented an example of a modern NLP architecture wherein the core component is a language model.
+We abandoned task specific and time consuming feature engineering.
 Instead, thanks to language models, we can use powerful features, context-aware word embeddings.
 Nowadays, transferring knowledge from language models has become extremely popular.
-This approach dominates leader boards of any NLP task, including aspect-based sentiment classification (see the table below).
+This approach dominates the leader boards of any NLP task, including aspect-based sentiment classification (see the table below).
 Nonetheless, we should interpret these results with caution.
 
-```
-State of the art results on the most common evaluation dataset 
-(SemEval 2014 Task 4 SubTask 2, details [here](http://alt.qcri.org/semeval2014/task4/)).
-The second model was presented in the previous section. All use BERT as the language model.
-```
+<p align="middle">
+<img src="images/png/4.1-table-semeval.png" width="600" alt=""/>
+</p>
 
-A single metric might be misleading, especially, when an evaluation dataset is modest (as in this case).
-According to the introduction, a model seeks any correlations useful for making a correct prediction, 
+A single metric might be misleading, especially when the evaluation dataset is modest (as in this case).
+According to the introduction, a model seeks any correlations it deems useful for making a correct prediction, 
 regardless of whether they make sense to human beings or not.
-As a result, the model reasoning and human reasoning are very different.
-The model encodes dataset specifics invisible to humans.
-In return for the high accuracy of the massive modern models, we have little control over the model behavior 
+As a result, model reasoning and human reasoning are very different.
+A model encodes dataset specifics invisible to humans.
+In return for the high accuracy of massive modern models, we have little control over the model behavior 
 - because both the model reasoning and the dataset characteristics which the model is trying to map precisely, are unclear. 
-It is a vital problem because during an inference, unconsciously exposing a model to examples 
-which are completely unusual is more likely, and this can cause unpredictable model behavior.
+It is a serious problem because during an inference, unconsciously exposing a model to examples 
+which are completely unusual is much more likely, and this can cause unpredictable model behavior.
 To avoid such dangerous situations and to better understand what is beyond the comprehension of a model, 
-we should construct additional tests; fine-grained evaluations [survey].
+we need to construct additional tests; fine-grained evaluations.
 
-```
-Test Model Behaviors
-```
+<p align="middle">
+<img src="images/png/4.2-test-model-behaviors.png" width="600" alt=""/>
+</p>
 
 In the table below, we present three exemplary tests that roughly estimate model limitations.
-To be consistent, we examined the BERT-ADA model introduced in the previous section.
-Test A checks how crucial is information about an aspect to solve a task.
-We force a model to predict sentiment without providing aspects.
+To be consistent, we examined the `BERT-ADA` model introduced in the previous section.
+Test A checks how crucial the information about an aspect is.
+We limit the model to predict sentiment without providing any aspects.
 The task then becomes a basic, aspect independent, sentiment classification 
-(details are [here](analysis/aspect_without.py)).
+(details are [here](https://github.com/rolczynski/Explainable-Sentiment-Analysis/blob/master/analysis/aspect_without.py#L33)).
 Test B verifies how a model considers an aspect. 
-The model predicts using (instead of correct) unrelated aspects; 
+We force a model to predict using unrelated aspects (instead of the correct ones); 
 manually selected and verified simple nouns that are not present in the dataset, even implicitly. 
 We process positive and negative examples, expecting to get neutral sentiment predictions
-(details are [here](analysis/aspect_condition.py)).
+(details are [here](https://github.com/rolczynski/Explainable-Sentiment-Analysis/blob/master/analysis/aspect_condition.py#L42)).
 Test C examines how precisely a model separates information about a requested aspect from other aspects.
 In the first case, we process positive and neutral examples
 wherein we add to texts a negative emotional sentence about a different aspect.
 For instance, "The {other aspect} is really bad." expecting that the model will persist in making its predictions, without any changes.
 In the second case, we process negative and neutral examples with an additional positive sentence "The {other aspect} is really great.".
 In both cases, we use hand-crafted templates and verified unrelated aspects from test B
-(details are [here](analysis/aspect_separation.py)).
+(details are [here](https://github.com/rolczynski/Explainable-Sentiment-Analysis/blob/master/analysis/aspect_separation.py#L82)).
 
-```
-Test Name                            | Acc. Laptop     | Acc. Restaurant
-------------------------------------------------------------------------
-SemEval                              | 79.23           | 85.17
-------------------------------------------------------------------------
-Test A: Course-Grained               | 71.63           | 75.62
-Test B: Aspect Condition             | 35.94           | 40.54
-Test C: Add Emotional Sentence       |                 | 
-        a) Process pos/neu (add neg) | 66.42 (-13.58%) | 83.68 (-4.07%)
-        b) Process neg/neu (add pos) | 51.47 (-26.15%) | 55.34 (-12.52%)
+<p align="middle">
+<img src="images/png/4.3-test-table.png" width="600" alt=""/>
+</p>
 
-The test results of the `classifier-rest-0.2` and the `classifier-lapt-0.2` models (the BERT-ADA architecture).
-More details in log files [here](analysis/logs).
-```
-
-Test A confirms that the course-grained sentiment classifier achieves good results as well (without any adjustments).
+Test A confirms that the course-grained classifier is achieving good results as well (without any adjustments).
 This is not good news.
 If a model predicts a sentiment correctly without taking into account an aspect, roughly, 
-there is no gradient towards patterns that support aspect-based classification, and the model has nothing to improve in this direction.
+there will be no gradient towards patterns that support aspect-based classification, and the model will have nothing to improve in this direction.
 Consequently, at least 70% of the already limited dataset will not help to improve the aspect-based sentiment classification.
 In addition, these examples might even be disruptive, because they could overwhelm examples which require multi-aspect consideration.
-Multi-aspect examples might be treated as outliers, and gentle erased due to averaging a gradient in a batch for example.
+Multi-aspect examples might become treated as outliers, and gentle erased due to averaging of a gradient in a batch for example
+(the test summary is [here](https://github.com/rolczynski/Explainable-Sentiment-Analysis/blob/master/analysis/logs/aspect-without.log)).
 
-Test B demonstrates that a model may not truly solve the aspect-based classification, 
+Test B demonstrates that a model may not truly solve aspect-based conditions, 
 because it considers an aspect mainly as a feature, not as a constraint. 
 In 35 and 40% of cases, a model recognizes correctly that the text does not concern a given aspect, 
 and returns a neutral sentiment instead of positive or negative. 
 The model's accurateness in terms of aspect-based classification is questionable. 
-One might conclude this directly from the model architecture because there is no dedicated mechanism that might impose the aspect-based condition.
+One might conclude this directly from the model architecture because there is no dedicated mechanism that might impose the aspect-based condition
+(the test summary is [here](https://github.com/rolczynski/Explainable-Sentiment-Analysis/blob/master/analysis/logs/aspect-condition.log).
 
-The test C shows that a model separates information about different aspects well.
+Test C shows that a model separates information about different aspects well.
 The reference is given in brackets to emphasize how enriched texts decrease model performance of processing 
 a) positive/neutral and b) negative/neutral examples.
 In most cases, the model correctly deals with a basic multi-aspect problem, 
 and recognizes that an added sentence, highly emotional in the opposite direction, does not concern a given aspect. 
 Even if test B shows that the model is neglecting in some cases information about an unrelated aspect, 
 this test reveals that an aspect is a really vital feature if a text concerns many aspects including the given aspect, 
-and the model needs to separate out information about different aspects.
+and the model needs to separate out information about different aspects
+(the test summary is [here](https://github.com/rolczynski/Explainable-Sentiment-Analysis/blob/master/analysis/logs/aspect-separation.log).
 
-The model behavior tests, as exemplary above, can provide many valuable insights [checklist].
-Unfortunately, papers describing state-of-the-art models gently leave aside tests that may expose model limitations.
-In contrast, we encourage you to do tests.
+The model behavior tests, as shown above, can provide many valuable insights.
+Unfortunately, papers describing state-of-the-art models quietly ignore tests that may expose model limitations.
+In contrast, we encourage you to do those tests.
 Even though they might be time-consuming and tedious, test-driven model development is powerful because
-you can understand any model defects in detail, fix them, and make further improvements smoothly.
+you can understand any model defects in detail, fix them, and make further improvements more smoothly.
 
 <br>
 
 
-#### Professor: Supervised Model Predictions
+#### The Professor: Supervising Model Predictions
 
-The performed tests have exposed some model limitations.
-The most natural way to eliminate them would be fixing the model itself.
-Firstly, keeping in mind that a model reflects data, we could augment a dataset, 
-and add examples that a model has difficulties in predicting correctly.
+The tests so far performed have exposed some model limitations.
+The most natural way to eliminate these would be to fix the model itself.
+Firstly, keeping in mind that a model reflects the data, we could augment a dataset, 
+and add examples that the model has difficulties with predicting correctly.
 Since manual labeling is time-consuming, we might think about generating examples.
-Nonetheless, models quickly adapt to fixed structures, so the benefits might well be minimal.
+Nonetheless, models adapt quickly to fixed structures, so the benefits might well be minimal.
 Secondly, of course, we could propose a new model architecture.
 This is an appealing direction from the perspective of a researcher, 
-however, profits from the findings may prove to be uncertain.
+however, profits from the findings are uncertain.
 
-```
-pre-process -> the model predicts -> **the professor reviews** -> post-process
-```
+<p align="middle">
+<img src="images/png/5.1-process.png" width="600" alt=""/>
+</p>
 
 Due to problematic model fixing, unknown model reasoning, and limited decision control, 
 we have abandoned the idea of using a standard pipeline that relies exclusively on a single end-to-end model. 
 Instead, before making a final decision, we fortify the pipeline with a reviewing process. 
-We introduce a distinct component - the `professor` - that manages the reviewing process. 
-The professor reviews the model hidden states and outputs to both identify and correct suspicious predictions. 
+We introduce a distinct component - the `professor` - to manage the reviewing process. 
+The professor reviews the model's hidden states and outputs, to both identify and correct suspicious predictions. 
 It is composed of either simple or complex auxiliary models that examine the model reasoning and correct any model weaknesses. 
-Because the professor considers information from aux. models to make the final decision,
-we have greater control over the decision-making, and we can freely customize the model behavior.
-
-````
-fix model limitations & explain model reasoning
-````
+Because the professor takes into account information from aux. models in order to make the final decision,
+we have greater control over the decision-making process, and we can freely customize the model behavior.
 
 <br>
 
-##### Professor: Fix Model Limitations
+##### The Professor: Fixing Model Limitations
 
-Firstly, we highlight how to start fixing the model limitations smoothly using the professor.
-Coming back to the problem stated in test B, to avoid questionable predictions,
+Firstly, we highlight how to start fixing the model limitations more smoothly using the professor.
+Coming back to the problem stated in test B, avoiding questionable predictions,
 we want to build an aux. classifier that predicts whether a text relates to an aspect or not.
 If there is no reference in a text to an aspect, the professor sets a neutral sentiment
-regardless of the model prediction (details are [here]).
+regardless of the model prediction 
+(details are [here](https://github.com/ScalaConsultants/Aspect-Based-Sentiment-Analysis/blob/master/aspect_based_sentiment_analysis/professors.py#L33)).
 
 ````python
 import aspect_based_sentiment_analysis as absa
@@ -412,63 +399,58 @@ recognizer = absa.aux_models.BasicReferenceRecognizer.from_pretrained(name)
 professor = absa.Professor(reference_recognizer=recognizer)
 ````
 
-Good practice is to gradually increase model complexity in response to demands.
-We propose the simple aux. model `BasicReferenceRecognizer` for now
-that only checks if an aspect is clearly mentioned in a text (model details are [here], the training is [here]).
-The table below confirms the significant improvement in Test B.
+Good practice is to gradually increase the model complexity in response to demands.
+We propose a simple aux. model `BasicReferenceRecognizer` for now
+that only checks if an aspect is clearly mentioned in a text 
+(model details are [here](https://github.com/ScalaConsultants/Aspect-Based-Sentiment-Analysis/blob/master/aspect_based_sentiment_analysis/aux_models.py#L64), 
+the training is [here](https://github.com/rolczynski/Explainable-Sentiment-Analysis/blob/master/analysis/aux_model_reference.py#L60))).
+The table below confirms the significant improvement of Test B performance.
 Nonetheless, in most cases, there is a trade-off between the performance of different tests as it is here.
 Note that this is a simple test case.
-We encourage you, especially if it concerns your business, to construct more challenging tests
+Therefore, we encourage you, especially if it concerns your business, to construct more challenging tests
 wherein aspect mentions are more implicit.
 
-```
-Test Name       | Acc. Laptop      | Acc. Restaurant 
-------------------------------------------------------
-Semeval         | 79.00 (-0.98%)   | 83.13 (-2.41%)   
-Test B          | 74.41 (+106.51%) | 79.55 (+108.81%)
-
-The test results of the `classifier-rest-0.2` and the `classifier-lapt-0.2` models 
-enhaced by the basic reference recognizer (the version 0.1).
-The recognizer parameters chosen based on the training data.
-The improvment of the model performance is given in brackets.
-More details in the log file [here](analysis/logs/aux-model-reference.log).
-```
+<p align="middle">
+<img src="images/png/5.2-aux-model-reference.png" width="600" alt=""/>
+</p>
 
 <br>
 
-##### Professor: Explain Model Reasoning
+##### The Professor: Explaining Model Reasoning
 
-There is the second, more important reason why we have introduced the professor.
+There is a second, more important reason why we have introduced the professor.
 The professor's main role is to explain model reasoning, something which is extremely hard.
-We are far from explaining model behaviour precisely
-even though it is crucial for building intuition that can fuel further research and development.
-In addition, model transparency enables understanding of model failures from various perspectives, 
-considering safety (e.g. adversarial attacks), fairness (e.g. model biases), reliability (e.g. spurious correlations), and more.
+We are far from explaining model behavior precisely
+even though it is crucial for building intuition to fuel further research and development.
+In addition, model transparency enables an understanding of model failures from various perspectives, 
+such as safety (e.g. adversarial attacks), fairness (e.g. model biases), reliability (e.g. spurious correlations), and more.
 
-```
-understand model reasoning => development - safety - fairness - reliability
-```
+<p align="middle">
+<img src="images/png/5.3-understand-model-reasoning.png" width="600" alt=""/>
+</p>
 
 Explaining model decisions is challenging, but not only due to model complexity.
-As we said before, models make decisions in a completely different way than people do.
-We need to translate abstract model reasoning into a human understandable form.
-To do so, we have to break down model reasoning into components that we can understand called the patterns.
-A pattern is interpretable and has an `importance` attribute (within the range <0, 1>) 
+As we mentioned before, models make decisions in a completely different way to people.
+We need to translate abstract model reasoning into a form understandable for humans.
+To do so, we have to break down model reasoning into components that we can understand.
+These are called patterns.
+A pattern is interpretable and has an `importance` attribute (within the range `<0, 1>`) 
 that expresses how a particular pattern contributes to the model prediction.
 
+<br>
+
 A single `pattern` is a weighted composition of tokens.
-It is a vector that assigns a weight for each token (within the range <0, 1>) that defines how a token relates to a pattern.
+It is a vector that assigns a weight for each token (within the range <0, 1>) that defines how a token relates to a pattern (an example below).
 For instance, a one-hot vector illustrate a simple pattern that is exclusively composed of a single token.
 This interface, the pattern definition, enables either simple or more complex relations to be conveyed.
 It can capture key tokens (one-hot vectors), key token pairs or more tangled structures.
-The more complex the interface, the pattern structure, the more details can be encoded.
-In the future, the interface might be a natural language itself.
-It would be great to read a decision explanation in the form of an essay.
+The more complex the interface (the pattern structure), the more details can be encoded.
+In the future, the interface of model explanation might be a natural language itself.
+It would be great, for example, to read an explanation of a decision in the form of an essay.
 
-```
-subset of tokens (latent rationales) - ranking of single tokens - complex structures
------ pattern complexity ----->
-```
+<p align="middle">
+<img src="images/png/5.4-pattern.png" width="600" alt=""/>
+</p>
 
 The key concept is to frame the problem of explaining a model decision as an independent task wherein
 an aux. model, the `pattern recognizer`, predicts patterns given model inputs, outputs, and internal states.
@@ -477,26 +459,32 @@ We can try to build model-agnostic pattern recognizer (independent with respect 
 We can customize inputs, for instance, take into account internal states or not,
 analyze a model holistically or derive conclusions from only a specific component.
 Finally, we can customize outputs, defining sufficient pattern complexity.
-Note that it would be a challenge to design training and evaluation, because the true patterns are unknown.
+Note that it is a challenge to design training and evaluation, because the true patterns are unknown.
 As a result, extracting complex patterns correctly is extremely hard.
 Nonetheless, there are a few successful methods to train a pattern recognizer that can reveal latent rationales.
 This is the case in which a pattern recognizer tries to mask-out as many input tokens as possible,
-constrained to keeping an original prediction (e.g. the `DiffMask` method [here], and perturbation-based methods [here]).
+constrained to keeping an original prediction (e.g. the `DiffMask` method).
 
 <p align="middle">
-<img src="images/patter-recognizer.svg" width="600" alt=""/>
+<img src="images/png/5.5-pattern-recognizer.png" width="600" alt=""/>
 </p>
-
-<br>
 
 Due to time constraints, at first we did not want to research and build a trainable pattern recognizer.
 Instead, we decided to start with a pattern recognizer that originates from our observations, prior knowledge.
-The model, the aspect-based sentiment classifier, is based on the transformer architecture [here] wherein self-attention layers hold the most parameters.
+The model, the aspect-based sentiment classifier, is based on the transformer architecture wherein self-attention layers hold the most parameters.
 Therefore, one might conclude that understanding self-attention layers is a good proxy to understanding a model as a whole.
-Accordingly, there are many articles [here] that show how to explain a model decision 
+Accordingly, there are many articles 
+\[
+[1](http://arxiv.org/abs/1905.10650), 
+[2]((http://arxiv.org/abs/2002.12327)), 
+[3](http://arxiv.org/abs/1906.04341), 
+[4](http://arxiv.org/abs/1906.02715), 
+[5](https://github.com/HendrikStrobelt/Seq2Seq-Vis)
+] that show how to explain a model decision 
 in simple terms, using attention values (internal states of self-attention layers) straightforwardly.
 Inspired by these articles, we have also analyzed attention values (processing training examples) to search for any meaningful insights.
-This exploratory study has led us to create the `BasicPatternRecognizer` (details are in the appendix below and the implementation is [here]).
+This exploratory study has led us to create the `BasicPatternRecognizer` 
+(details are [here](https://github.com/ScalaConsultants/Aspect-Based-Sentiment-Analysis/blob/master/aspect_based_sentiment_analysis/aux_models.py#L136).
 
 ````python
 import aspect_based_sentiment_analysis as absa
@@ -508,13 +496,18 @@ professor = absa.Professor(pattern_recognizer=recognizer)
 
 # Examine the model decision.
 nlp = absa.Pipeline(..., professor=professor) # Set up the pipeline. 
-completed_task = nlp(text=..., aspects=['slack computer program'])
-[slack] = completed_task.examples
+completed_task = nlp(text=..., aspects=['slack', 'price'])
+slack, price = completed_task.examples
 absa.display(slack.review) # It plots inside a notebook straightaway.
+absa.display(price.review)
 ````
 
 <p align="middle">
-<img src="images/patterns-price.png" width="600" alt=""/>
+<img src="images/png/5.6-slack-patterns.png" width="600" alt=""/>
+</p>
+
+<p align="middle">
+<img src="images/png/5.7-price-patterns.png" width="600" alt=""/>
 </p>
 
 <br>
@@ -526,9 +519,14 @@ The explanations are only useful if they are correct.
 To form the basic pattern recognizer, we have made several assumptions (prior beliefs),
 therefore we should be careful about interpreting the explanations too literally.
 Even if the attention values have thought-provoking properties, for example, 
-they encode rich linguistic relationships [here], there is no proven chain of causation.
+they encode rich linguistic relationships, there is no proven chain of causation.
 There are a lot of articles that illustrate various concerns why drawing conclusions about model reasoning
-directly from attentions might be misleading [here].
+directly from attentions might be misleading 
+\[
+[1](https://arxiv.org/abs/1902.10186)),
+[2](http://arxiv.org/abs/1908.04626),
+[3](http://arxiv.org/abs/1909.10430)
+].
 Even if the patters seem to be reasonable, the critical thinking is the key.
 We need a quantitative analysis to truly measure how correct the explanations are.
 Unfortunately, as with the training, the evaluation of a pattern recognizer is tough due to the fact that the true patterns are unknown.
@@ -543,10 +541,9 @@ There are many properties needed to keep an explanation consistent and reliable 
 The explanation should clearly indicate the most important (in terms of decision-making) token at least.
 To confirm whether the proposed `BasicPatternRecognizer` provides patterns that support this property or not, we can do a simple test. 
 
-```
-[Pattern Recognizer] Patterns -> [Predict] -> Key Token Prediction
-                                                   {fans}
-```
+<p align="middle">
+<img src="images/png/6.1-process-key-token.png" width="600" alt=""/>
+</p>
 
 We mask in a text the most important (according to patterns) token, and observe if the model changes the decision or not.
 The example might contain several `key tokens`, tokens that masked (independently) cause a change in the model's prediction.
@@ -560,51 +557,42 @@ key_token_prediction = absa.aux_models.predict_key_set(patterns, n=1)
 ```
 
 It is important to be aware that the key token prediction comes from a pattern recognizer indirectly.
-We set up a plain rule `predict_key_set` (details are [here]) that sums the weighted (by importance values) patterns, and predicts a key token (in this case).
+We set up a plain rule `predict_key_set` 
+(details are [here](https://github.com/ScalaConsultants/Aspect-Based-Sentiment-Analysis/blob/master/aspect_based_sentiment_analysis/aux_models.py#L181)) 
+that sums the weighted (by importance values) patterns, and predicts a key token (in this case).
 Moreover, note that the test is simple and convenient because we are able to reveal valid key tokens
 (checking only `n` combinations at most) needed to measure the test performance precisely.
 
-```
-Pattern Recognizers  | Acc. Laptop     | Acc. Restaurant
-                     | Train  | Test   | Train  | Test
-                     | 10.33% | 23.82% | 16.88% | 26.43%
---------------------------------------------------------
-Random               |  6.28  | 18.42  |  8.39  | 11.15
-Attention            | 36.82  | 44.08  | 29.93  | 32.77
-Gradient             | 14.64  | 16.45  | 24.84  | 26.69
-*Basic*              | 53.14  | 55.26  | 73.52  | 62.16
+<p align="middle">
+<img src="images/png/6.2-results-key-token.png" width="600" alt=""/>
+</p>
 
-The key token recognition based on an explanation provided by a pattern recognizer. 
-Evaluated on examples that have at least one key token.
-The percents under the dataset names describe the amount of examples that contain a key token within each dataset.
-More details in the log file [here](analysis/logs/recognition_key_token.log).
-```
-
-In the table above, we compare four pattern recognizers (details of other recognizers are [here]).
+In the table above, we compare four pattern recognizers 
+(details of other recognizers are [here](https://github.com/rolczynski/Explainable-Sentiment-Analysis/blob/master/analysis/extension.py)).
 For example, around 24% of the laptop test examples have at least one key token (others we filter out).
 Of those, around 55% of cases, the chosen token based on an explanation from the basic pattern recognizer is the key token.
-From this perspective, the basic patter recognizer is more precise that other methods (test details are [here]).
-It's interesting that test datasets have significantly more examples that contain a key token
-what suggests that model reasoning is different during processing known and unknown examples.
+From this perspective, the basic pattern recognizer is more precise that other methods 
+(test details are [here](https://github.com/rolczynski/Explainable-Sentiment-Analysis/blob/master/analysis/logs/recognition-key-token.log)).
+It's interesting that test datasets have significantly more examples that contain a key token.
+It suggests that model reasoning is different during processing known and unknown examples.
 In the next sections, we further analyse pattern recognizers solely on more reliable test datasets.
 
 <br>
 
 ##### Verification of Explanation Correctness: Key Pair Recognition Test
 
-The truth is that we cannot truly assess correctness of explanations evaluating only a single token.
-Therefore, to make this verification more reliable, we do the second similar test.
-The aim is to predict the `key pair of tokens`, a pair that masked causes a change in the model prediction .
+The truth is that we cannot truly assess the correctness of explanations by evaluating only a single token.
+Therefore, to make this verification more reliable, we do a second similar test.
+The aim is to predict the `key pair of tokens`, a pair that masked causes a change in the model prediction.
 
-```
-[Pattern Recognizer] Patterns -> [Predict] ->   Key Pair
-                                              {fans, slack}
-```
+<p align="middle">
+<img src="images/png/6.3-process-key-token-pair.png" width="600" alt=""/>
+</p>
 
 In the table below, we compare four pattern recognizers similarly as we have done in the previous test.
 For example, around 41% of the restaurant test examples have at least one key token pair (others we filter out).
 Of those, around 49% of cases, the chosen token pair from the basic pattern recognizer is the key pair of tokens.
-The basic basic patter recognizer is still the most accurate but the advantage over other methods has been diminished. 
+The basic basic pattern recognizer is still the most accurate but the advantage over other methods has been diminished. 
 Note that this test covers the previous key token test, therefore, results are correlated.
 
 ```
@@ -616,17 +604,28 @@ Attention           | 40.46       | 36.56
 Gradient            | 17.94       | 21.94
 *Basic*             | 50.00       | 49.25
 
+
+
+\begin{tabular}{l l l}
+\toprule
+Test Name & Acc. Laptop & Acc. Restaurant \\
+\midrule
+Semeval & 79.00 (-0.98\%)   & 83.13 (-2.41\%)   \\
+Test B  & 74.41 (+106.51\%) & 79.55 (+108.81\%) \\
+\bottomrule
+\end{tabular}
+
+
 The recognition of the key pair of tokens based on an explanation provided by a pattern recognizer. 
 Evaluated on examples that have at least one key token pair.
 The percents under the dataset names describe the amount of examples that contain a key token pair within each dataset.
-More details in the log file [here](analysis/logs/recognition_key_token_pair.log).
 ```
 
 Usually it is practically impossible to retrieve ground truth (existing too many combinations to check out), 
 and this is the unfortunate implication of unknown model reasoning.
 We cannot say exactly how accurate pattern recognizers are (in most test cases) but still we can compare them.
-Below, we check correctness of the basic pattern recognizer by comparing against other methods.
-This is the alternative approach how the performance of a pattern recognizer might be verified.
+Below, we check the correctness of the basic pattern recognizer by comparing against other methods.
+This is the alternative approach of measuring the performance of a pattern recognizer.
 
 <p align="middle">
 <img src="images/confusion-matrix-restaurant.svg" width="600" alt=""/>
@@ -639,7 +638,8 @@ The bottom-left cell counts examples wherein the basic recognizer uncovers a key
 while another recognizer does not, and the other way around (the upper-right cell).
 The upper-right value is also helpful to estimate how precise (at most) is the basic recognizer.
 To sum up, the basic recognizer aims to maximize the bottom-left and minimize the upper-right values.
-From this perspective as well, the basic patter recognizer stands out from other methods (test details are [here]).
+From this perspective as well, the basic pattern recognizer stands out from other methods 
+(test details are [here]).
 
 <br>
 
@@ -791,5 +791,69 @@ Test and explain model behaviors.
 <br>
 
 
-#### References
 
+
+
+
+### References
+
+How to use language models in the Aspect-Based Sentiment Analysis:
+- Utilizing BERT for Aspect-Based Sentiment Analysis via Constructing Auxiliary Sentence (NAACL 2019)
+[[code]](https://github.com/HSLCY/ABSA-BERT-pair)[[paper]](https://www.aclweb.org/anthology/N19-1035/)
+- BERT Post-Training for Review Reading Comprehension and Aspect-based Sentiment Analysis (NAACL 2019)
+[[code]](https://github.com/howardhsu/BERT-for-RRC-ABSA)[[paper]](http://arxiv.org/abs/1908.11860)
+- Exploiting BERT for End-to-End Aspect-based Sentiment Analysis
+[[code]](https://github.com/lixin4ever/BERT-E2E-ABSA)[[paper]](http://arxiv.org/abs/1910.00883)
+
+Introduction to the BERT interpretability:
+- Are Sixteen Heads Really Better than One?
+[[code]](https://github.com/pmichel31415/are-16-heads-really-better-than-1)[[paper]](http://arxiv.org/abs/1905.10650)
+- A Primer in BERTology: What we know about how BERT works
+[[paper]](http://arxiv.org/abs/2002.12327)
+- What Does BERT Look At? An Analysis of BERT's Attention
+[[code]](https://github.com/clarkkev/attention-analysis)[[paper]](http://arxiv.org/abs/1906.04341)
+- Visualizing and Measuring the Geometry of BERT
+[[code]](https://github.com/PAIR-code/interpretability)[[paper]](http://arxiv.org/abs/1906.02715)
+- Is BERT Really Robust? A Strong Baseline for Natural Language Attack on Text Classification and Entailment
+[[paper]](http://arxiv.org/abs/1907.11932)
+- Adversarial Training for Aspect-Based Sentiment Analysis with BERT
+[[paper]](http://arxiv.org/abs/2001.11316)
+- Adv-BERT: BERT is not robust on misspellings! Generating nature adversarial samples on BERT
+[[paper]](http://arxiv.org/abs/2003.04985)
+- exBERT: A Visual Analysis Tool to Explore Learned Representations in Transformers Models
+[[code]](https://github.com/bhoov/exbert)[[paper]](http://arxiv.org/abs/1910.05276)
+- Does BERT Make Any Sense? Interpretable Word Sense Disambiguation with Contextualized Embeddings
+[[code]](https://github.com/uhh-lt/bert-sense)[[paper]](http://arxiv.org/abs/1909.10430)
+- Attention is not Explanation
+[[code]](https://github.com/successar/AttentionExplanation)[[paper]](https://arxiv.org/abs/1902.10186)
+- Attention is not not Explanation
+[[code]](https://github.com/sarahwie/attention)[[paper]](http://arxiv.org/abs/1908.04626)[[blog post]](https://medium.com/@yuvalpinter/attention-is-not-not-explanation-dbc25b534017)
+- Hierarchical interpretations for neural network predictions
+[[code]](https://github.com/csinva/hierarchical-dnn-interpretations)[[paper]](https://arxiv.org/abs/1806.05337)
+- Analysis Methods in Neural NLP
+[[code]](https://github.com/boknilev/nlp-analysis-methods)[[paper]](https://www.mitpressjournals.org/doi/pdf/10.1162/tacl_a_00254)
+- Visualization for Sequential Neural Networks with Attention
+[[code]](https://github.com/HendrikStrobelt/Seq2Seq-Vis)
+- NeuroX: Toolkit for finding and analyzing important neurons in neural networks
+[[code]](https://github.com/fdalvi/NeuroX)[[paper]](https://arxiv.org/abs/1812.09359)
+
+The State of the Art results:
+- A Multi-task Learning Model for Chinese-oriented Aspect Polarity Classification and Aspect Term Extraction
+[[code]](https://github.com/yangheng95/LCF-ATEPC)[[paper]](http://arxiv.org/abs/1912.07976)
+- Adapt or Get Left Behind: Domain Adaptation through BERT Language Model Finetuning for Aspect-Target Sentiment Classification
+[[code]](https://github.com/deepopinion/domain-adapted-atsc)[[paper]](http://arxiv.org/abs/1908.11860)
+- Adversarial Training for Aspect-Based Sentiment Analysis with BERT
+[[code]](https://github.com/akkarimi/Adversarial-Training-for-ABSA)[[paper]](https://arxiv.org/pdf/2001.11316.pdf)
+
+Other interesting:
+- Multi-Dimensional Explanation of Ratings from Reviews
+[[paper]](http://arxiv.org/abs/1909.11386)
+- Extracting Syntactic Trees from Transformer Encoder Self-Attentions
+[[paper]](http://aclweb.org/anthology/W18-5444)
+- Master Thesis: Transfer and Multitask Learning for Aspect-Based Sentiment Analysis Using the Google Transformer Architecture
+[[code]](https://github.com/felixSchober/ABSA-Transformer)
+- Create interactive textual heat maps for Jupiter notebooks
+[[code]](https://github.com/AndreasMadsen/python-textualheatmap)
+- A pyTorch implementation of the DeepMoji model: state-of-the-art deep learning model for analyzing sentiment, emotion, sarcasm etc
+[[code]](https://github.com/huggingface/torchMoji)
+- More you can find [here](https://github.com/jiangqn/Aspect-Based-Sentiment-Analysis).

@@ -1,0 +1,129 @@
+\begin{table}[h]
+\renewcommand\thetable{1}   % forcing the specific number
+\captionsetup{font=footnotesize}  % smaller caption
+\vspace*{10pt}
+\centering
+
+\begin{tabular}{l c c c}
+\toprule
+Model Name & Acc. Laptop & Acc. Restaurant & Release \\
+\midrule
+LCF-ATEPC & 82.29 & 90.18 & Jan 2020 \\
+BERT-ADA & 80.23 & 87.89 & Nov 2019 \\
+BAT & 79.35 & 86.03 & Feb 2020 \\
+\bottomrule
+\end{tabular}
+
+\caption{
+State of the art results on the most common evaluation dataset (SemEval 2014 Task 4 SubTask 2).
+The second model was presented in the previous section. All use BERT as the language model.
+}
+\label{tab:semeval}
+\end{table}
+
+
+
+\begin{table}[h]
+\renewcommand\thetable{2}
+\captionsetup{font=footnotesize}
+\vspace*{10pt}
+\centering
+
+\begin{tabular}{l c c}
+\toprule
+Test Name & Acc. Laptop & Acc. Restaurant \\
+\midrule
+Semeval & 79.23 & 85.17 \\
+\midrule
+Test A: Course-Grained   & 71.63 & 75.62 \\
+Test B: Aspect Condition & 35.94 & 40.54 \\
+Test C: Add Emotional Sentence  & & \\
+\quad \qquad \: a) Process pos/neu (add neg) & 66.42 (-13.58\%) & 83.68 (-4.07\%)  \\
+\quad \qquad \: b) Process neg/neu (add pos) & 51.47 (-26.15\%) & 55.34 (-12.52\%) \\
+\bottomrule
+\end{tabular}
+
+\caption{
+The test results of the \texttt{classifier-rest-0.2}
+and the \texttt{classifier-lapt-0.2} models (the BERT-ADA architecture).
+}
+\label{tab:model-tests}
+\end{table}
+
+
+
+\begin{table}[h]
+\renewcommand\thetable{3}
+\captionsetup{font=footnotesize}
+\vspace*{10pt}
+\centering
+
+\begin{tabular}{l l l}
+\toprule
+Test Name & Acc. Laptop & Acc. Restaurant \\
+\midrule
+Semeval & 79.00 (-0.98\%)   & 83.13 (-2.41\%)   \\
+Test B  & 74.41 (+106.51\%) & 79.55 (+108.81\%) \\
+\bottomrule
+\end{tabular}
+
+\caption{
+The test results of the \texttt{classifier-rest-0.2} and the \texttt{classifier-lapt-0.2} models
+enhanced by the basic reference recognizer (the version 0.1).
+The recognizer parameters chosen based on the training data.
+The improvement of the model performance is given in brackets.
+}
+\label{tab:aux-model-reference}
+\end{table}
+
+
+
+\begin{table}[h]
+\renewcommand\thetable{4}
+\captionsetup{font=footnotesize}
+\vspace*{10pt}
+\centering
+
+\begin{tabular}{
+    >{\raggedright}p{3cm}
+    >{\centering}p{1.2cm}
+    >{\centering}p{1.2cm}
+    >{\centering}p{1.1cm}
+    >{\centering\arraybackslash}p{1.1cm}
+}\toprule
+\multirow{3}{*}{Pattern Recognizer} & \multicolumn{2}{c}{Acc. Laptop} & \multicolumn{2}{c}{Acc. Restaurant} \\
+ & Train  & Test   & Train  & Test \\
+ & 10.33\% & 23.82\% & 16.88\% & 26.43\% \\
+\midrule
+Random         &  6.28 & 18.42 &  8.39 & 11.15 \\
+Attention      & 36.82 & 44.08 & 29.93 & 32.77 \\
+Gradient       & 14.64 & 16.45 & 24.84 & 26.69 \\
+\textbf{Basic} & 53.14 & 55.26 & 73.52 & 62.16 \\
+\bottomrule
+\end{tabular}
+
+\caption{
+The key token recognition based on an explanation provided by a pattern recognizer.
+Evaluated on examples that have at least one key token.
+The percents under the dataset names describe the amount of examples that contain a key token within each dataset.
+}
+\label{tab:recognition-key-token}
+\end{table}
+
+
+\begin{table}[h]
+\renewcommand\thetable{5}
+\captionsetup{font=footnotesize}
+\vspace*{10pt}
+\centering
+
+
+\caption{
+The recognition of the key pair of tokens based on an explanation provided by a pattern recognizer.
+Evaluated on examples that have at least one key token pair.
+The percents under the dataset names describe the amount of examples that contain a key token pair within each dataset.
+}
+\label{tab:recognition-key-token-pair}
+\end{table}
+
+
