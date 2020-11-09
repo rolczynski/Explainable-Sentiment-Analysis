@@ -14,6 +14,7 @@ from joblib import Memory
 
 from . import extension
 from . import utils
+from . import plots
 from .recognition_key_token import mask_tokens
 from .recognition_key_token import retrieve_labels \
     as key_token_labels
@@ -119,7 +120,7 @@ def evaluate(
     return max_scores, matrix
 
 
-def experiment(models: Dict[str, str], max_k: int = 5):
+def experiment(models: Dict[str, str], max_k: int = 5, save_plot: bool = True):
     utils.setup_logger(HERE / 'logs' / 'recognition-minimal-key-set.log')
     logger.info('Begin Evaluation: the Minimal Key Set Recognition')
 
@@ -139,6 +140,9 @@ def experiment(models: Dict[str, str], max_k: int = 5):
             nlp.professor.pattern_recognizer = recognizer
             result = evaluate(nlp, domain, repr(recognizer), max_k)
             results.append(result)
+
+        if save_plot:
+            plots.model_reasoning.save_figure(max_scores, results, domain)
 
         logger.info(
             f'{domain.upper()} DOMAIN\n'
