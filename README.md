@@ -13,25 +13,6 @@ to clearly present this advantage), we can also infer general characteristics of
 We truly believe that testing and explaining model behaviors can fuel further development,
 and make models more useful within real-world applications.
 
-<br>
-
-Introduction
-Definition of the Problem 
-Pipeline: Keeping the Process in Shape
-Model: Heart of Pipeline
-Awareness of Model Limitations
-Professor: Supervised Model Predictions
-    Fix Model Limitations
-    Explain Model Reasoning
-Verification of Explanation Correctness
-    Key Token Recognition Test
-    Key Pair Recognition Test
-Inferring from Explanations: Complexity of Model Reasoning
-Rolf: Exemplary Graphical User Interface
-Conclusions
-
-<br>
-
 
 #### Introduction
 
@@ -539,7 +520,8 @@ Keeping this article concise, we cover solely two tests but there is much more t
 
 There are many properties needed to keep an explanation consistent and reliable but one is fundamental. 
 The explanation should clearly indicate the most important (in terms of decision-making) token at least.
-To confirm whether the proposed `BasicPatternRecognizer` provides patterns that support this property or not, we can do a simple test. 
+To confirm whether the proposed `BasicPatternRecognizer` provides patterns that support this property or not, we can do a simple test
+(implementation is [here](https://github.com/rolczynski/Explainable-Sentiment-Analysis/blob/master/analysis/recognition_key_token.py#L133)). 
 
 <p align="middle">
 <img src="images/png/6.1-process-key-token.png" width="600" alt=""/>
@@ -572,7 +554,7 @@ In the table above, we compare four pattern recognizers
 For example, around 24% of the laptop test examples have at least one key token (others we filter out).
 Of those, around 55% of cases, the chosen token based on an explanation from the basic pattern recognizer is the key token.
 From this perspective, the basic pattern recognizer is more precise that other methods 
-(test details are [here](https://github.com/rolczynski/Explainable-Sentiment-Analysis/blob/master/analysis/logs/recognition-key-token.log)).
+(more test results are [here](https://github.com/rolczynski/Explainable-Sentiment-Analysis/blob/master/analysis/logs/recognition-key-token.log)).
 It's interesting that test datasets have significantly more examples that contain a key token.
 It suggests that model reasoning is different during processing known and unknown examples.
 In the next sections, we further analyse pattern recognizers solely on more reliable test datasets.
@@ -582,7 +564,8 @@ In the next sections, we further analyse pattern recognizers solely on more reli
 ##### Verification of Explanation Correctness: Key Pair Recognition Test
 
 The truth is that we cannot truly assess the correctness of explanations by evaluating only a single token.
-Therefore, to make this verification more reliable, we do a second similar test.
+Therefore, to make this verification more reliable, we do a second similar test
+(implementation is [here](https://github.com/rolczynski/Explainable-Sentiment-Analysis/blob/master/analysis/recognition_key_token_pair.py#L126)).
 The aim is to predict the `key pair of tokens`, a pair that masked causes a change in the model prediction.
 
 <p align="middle">
@@ -595,40 +578,18 @@ Of those, around 49% of cases, the chosen token pair from the basic pattern reco
 The basic basic pattern recognizer is still the most accurate but the advantage over other methods has been diminished. 
 Note that this test covers the previous key token test, therefore, results are correlated.
 
-```
-Pattern Recognizers | Acc. Laptop | Acc. Restaurant
-                    | 41.07%      | 41.52%
----------------------------------------------------
-Random              | 14.89       | 11.61
-Attention           | 40.46       | 36.56
-Gradient            | 17.94       | 21.94
-*Basic*             | 50.00       | 49.25
-
-
-
-\begin{tabular}{l l l}
-\toprule
-Test Name & Acc. Laptop & Acc. Restaurant \\
-\midrule
-Semeval & 79.00 (-0.98\%)   & 83.13 (-2.41\%)   \\
-Test B  & 74.41 (+106.51\%) & 79.55 (+108.81\%) \\
-\bottomrule
-\end{tabular}
-
-
-The recognition of the key pair of tokens based on an explanation provided by a pattern recognizer. 
-Evaluated on examples that have at least one key token pair.
-The percents under the dataset names describe the amount of examples that contain a key token pair within each dataset.
-```
+<p align="middle">
+<img src="images/png/6.4-results-key-token-pair.png" width="600" alt=""/>
+</p>
 
 Usually it is practically impossible to retrieve ground truth (existing too many combinations to check out), 
 and this is the unfortunate implication of unknown model reasoning.
 We cannot say exactly how accurate pattern recognizers are (in most test cases) but still we can compare them.
-Below, we check the correctness of the basic pattern recognizer by comparing against other methods.
+Below, we check the correctness of the basic pattern recognizer by comparing against other methods (the restaurant domain).
 This is the alternative approach of measuring the performance of a pattern recognizer.
 
 <p align="middle">
-<img src="images/confusion-matrix-restaurant.svg" width="600" alt=""/>
+<img src="images/png/6.5-confusion-matrix-restaurant.png" width="600" alt=""/>
 </p>
 
 In matrices, on-diagonal values illustrate cases wherein recognizers behave similarly.
@@ -639,94 +600,88 @@ while another recognizer does not, and the other way around (the upper-right cel
 The upper-right value is also helpful to estimate how precise (at most) is the basic recognizer.
 To sum up, the basic recognizer aims to maximize the bottom-left and minimize the upper-right values.
 From this perspective as well, the basic pattern recognizer stands out from other methods 
-(test details are [here]).
+(more test results are [here](https://github.com/rolczynski/Explainable-Sentiment-Analysis/blob/master/analysis/logs/recognition-key-token-pair.log)).
 
 <br>
 
 
 #### Inferring from Explanations: Complexity of Model Reasoning
 
-Building better pattern recognizers is not the goal on its own (at least, in this article).
-The aim is to benefit from a recognizer to discover insights about a model (and a dataset), and use them to make improvements.
-For instance, the attractive information that we can infer from explanations is complexity of model reasoning.
+Building better pattern recognizers is not the sole goal (at least, not in this article).
+The aim is to benefit from a recognizer to be able to discover insights about a model (and a dataset), and use them to make improvements.
+For instance, the attractive information we can infer from explanations is the complexity of model reasoning.
 In this section, we investigate whether a single token usually triggers off a model or a model rather uses more sophisticated structures.
-The analysis may quickly reveal alarming model behaviors because it is rather suspicious if a single token stands behind a decision of a neural network.
-Even though it's a valuable study on its own, the key idea of this section is to give an example of how to analyse error-prone explanations as a whole,
-in contrast to reviewing them individually what might be misleading.
+The analysis may quickly reveal any alarming model behaviors because it is rather suspicious if a single token stands behind a decision of a neural network.
+Even though it might be a valuable study on its own, the key concept of this section is to give an example of how to analyse error-prone explanations as a whole,
+in contrast to reviewing them individually something which might be misleading.
 
 <br>
 
-Assuming (roughly) that more complex structures engage more tokens (e.g. more relations potentially),
-we approximate complexity of model reasoning by the number of tokens crucial to make a decision.
+Assuming (roughly) that more complex structures engage more tokens (e.g. more relationships potentially),
+we approximate the complexity of model reasoning by the number of tokens crucial to making a decision.
 We assume that crucial tokens are the `minimal key set of tokens`, 
-the minimal set of tokens that masked (altogether) cause a change in the model prediction.
-As a result, we estimate the complexity using key sets that provide implicitly a patter recognizer.
+the minimal set of tokens that masked (altogether) cause a change in the model's prediction.
+As a result, we estimate the complexity using key sets that implicitly provide a pattern recognizer.
 
 <br>
 
 In this analysis, we benefit from the rule used in the last two tests that predicts (based on patterns) a key set of a given size `n`.
-To make this exemplary study clear, we want to be sure that analysing key sets are valid (cause a decision change).
+To make this exemplary study clear, we want to be sure that analysing key sets are valid (causing a decision change).
 Therefore, we introduce a simple policy that includes a validation.
-Namely, starting with the `n=1`, we iterate through key set predictions assuming that the first valid prediction is minimal.
-We validate a prediction by calling a model with the masked tokens (that belong to this set) expecting a decision change (details are [here]).
+Namely, starting with `n=1`, we iterate through key set predictions assuming that the first valid prediction is minimal.
+We validate a prediction by calling a model with the masked tokens (that belong to this set) expecting a decision change 
+(implementation is [here](https://github.com/rolczynski/Explainable-Sentiment-Analysis/blob/master/analysis/recognition_minimal_key_set.py#L122)).
 
-```
-Patterns -> [Rule] -> Key Set Prediction -> [Validate] -> Minimal Key Set Prediction
-                        <- `n+1`
-```
+<p align="middle">
+<img src="images/png/7.1-process-minimal-key-set.png" width="600" alt=""/>
+</p>
 
 The chart below (on the left) presents the summary of model reasoning in terms of complexity.
-As we said, the complexity is approximated by the number of crucial tokens (the minimal key set) that we infer from patterns using the plain rule and policy.
-The plot presents model reasoning on restaurant test predicted-negative examples (other plots are [here]).
-Because the dataset is unbalanced (positive examples dominate), 
-the model tend to classify masked examples as positive rather than neutral.
+As we said, the complexity is approximated by the number of masked tokens needed to change the model's decision.
+We infer them from patterns using a plain rule and policy.
+The plot presents model reasoning on restaurant test predicted-negative examples.
+Because the dataset is unbalanced (positive examples dominate), the model tends to classify masked examples as positive rather than neutral.
 This clearly demonstrates the confusion matrix on the right that keeps original sentiment predictions in rows, 
-and sentiment predictions after masking in columns.
+and sentiment predictions after masking in columns
+(using a key set that contains either one, two or three tokens chosen based on patterns provided by the basic pattern recognizer).
 Look at the second row of predicted negative examples.
-Many examples after masking (either one, two or three tokens) change sentiment to positive.
-We investigate them and other positive predictions, and it's turn out that almost fully masked examples remain positive.
+Many examples after masking change sentiment to positive.
+We investigate them and other positive predictions, and it turns out that almost fully masked examples remain positive.
 Therefore, the analysis of predicted-negative examples is more informative
 because predictions of positive sentiment would appear in the last column obscuring the overall picture.
-The problem occurs in both laptop and restaurant dataset domains.
+The problem occurs in both laptop and restaurant dataset domains 
+(other plots are [here](https://github.com/rolczynski/Explainable-Sentiment-Analysis/tree/master/analysis/plots)).
 
-```
-Basic:                                         y_hat masked
-[0.366 0.091 0.069 0.474]            neutral  [[ 74  13  51],  
-Max scores:                    y_hat negative  [ 40  67  68],   
-[0.497 0.24  0.137 0.126]            positive  [163  56 588]]   
-
-
-On the left, the probability mass function of the number of tokens in the minimal key sets.
-Evaluated on restaurant test predicted-negative examples.
-On the right, the confusion matrix that shows how a model changes a prediction after masking a key set of tokens
-(using a key set that contains either one, two or three tokens chosen based on patterns provided by the basic pattern recognizer).
-```
+<p align="middle">
+<img src="images/png/7.2-reasoning-restaurant.png" width="600" alt=""/>
+</p>
 
 The decision in around 74% of cases is based on simple patterns wherein one or two masked tokens are enough to change a model's prediction.
 The basic pattern recognizer provides rough understanding but it is far from being perfect.
-The last column shows than in 47% of cases it cannot find (misclassified) a valid key token set.
+The last column shows that in 47% of cases it cannot find (misclassified) a valid key token set.
 Note that the ground truth is helpful but not crucial.
-The more precise recognizer would try to push the predicted distribution towards left-hand side,
-therefore, without ground truth, still we can reveal valuable insights about a model.
+The more precise recognizer would try to push the predicted distribution towards the left-hand side,
+therefore, without ground truth, still we can reveal valuable insights about model reasoning.
 
-```
-Monitor Model Behaviors
-```
+<p align="middle">
+<img src="images/png/7.3-monitor-model.png" width="600" alt=""/>
+</p>
 
-The analysis is done outside of the pipeline (offline), to keep it clear.
+The analysis is done outside the pipeline (offline), to keep it clear.
 However, it can be easily adjusted to online monitoring of model behaviors.
-The key change concerns the number of additional calls to a model (preferable no calls).
-Instead of using a pain rule and policy, one can build another model that based on patterns (or internal model states) predicts 
+A key change concerns the number of additional calls to a model (preferably no calls).
+Instead of using a pain rule and policy, one can build another model that - based on patterns (or internal model states) - predicts 
 whether an example has e.g. a key token or a key set of four tokens, without any extra calls to a model for verifications.
-As a result, monitoring does not interfere with the model inference efficiency.
-The essences of this section is that we are able to track model behaviors e.g. complexity, and react if something goes wrong (or just changes rapidly).
+As a result, the monitoring does not interfere with the model inference efficiency.
+The essence of this section is that we are able to track model behaviors e.g. complexity, and react if something goes wrong (or just changes rapidly).
 
 <br>
 
 
 #### Rolf: Exemplary Graphical User Interface
 
-My dear colleagues have built Rolf ([https://rolf.scalac.io](https://rolf.scalac.io)), an exemplary GUI that demonstrates usefulness of approx. explanations.
+My superb colleagues have built **ROLF**, 
+an exemplary GUI that demonstrates among other things the usefulness of approx. explanations ([https://rolf.scalac.io](https://rolf.scalac.io)).
 Without installing the package, you have a quick access to the default pipeline that the `absa.load` function returns.
 The backend solely wraps up a pipeline into the clear flask service which provides data to the frontend.
 Write your text, add aspects, and hit the button "analyze".
@@ -734,126 +689,82 @@ In a few seconds, you have a response, a prediction together with an estimated e
 
 <br>
 
-On the right-hand side, for given aspects, there is the overall sentiment,
+On the right-hand side, for any given aspects, there is the overall sentiment,
 and below, the sentiment within independent spans (in this case, sentences that come from the `sentenzier`).
 Click on a span, and the inspect mode window pops up.
 This is a visualization of patterns that come directly from the basic pattern recognizer. 
 Review an explanation by clicking on different dots (importance values of patterns).
 
 <p align="middle">
-<img src="images/rolf-inspect-mode.png" width="600" alt=""/>
+<img src="images/png/8.1-rolf.png" width="600" alt=""/>
 </p>
 
-Please be aware that the service is running on the CPU "minimal-resource" machine,
-therefore, the inference time is extremely high comparing to service working on the well-adjusted modern computational units.
-The adjustment is straightforward having defined service requirements.
+Please be aware that the service runs on a CPU "minimal-resource" machine,
+therefore, the inference time is extremely high comparing to a service working on well-adjusted modern computational units.
+The adjustment is straightforward having once defined the service requirements.
 
 <br>
 
 
 #### Conclusions
 
-The free of restrictions process of forming model reasoning builds models both powerful and fragile.
-It is the big advantage that a model infers the logic behind the transformation directly from data.
-However, discovered (vague and intricate for human beings) correlations generalize well a given task, not necessarily a desired general problem.
-As a result, it is totally natural that the model behavior may not be consistent with the expected behavior, on unseen data in particular.
+The restriction-free process of creating model reasoning can build models that are both powerful and fragile at the same time.
+It is a big advantage that a model infers the logic behind the transformation directly from data.
+However, the discovered correlations (vague and intricate to human beings) can generalize well a given task but not necessarily a general problem.
+As a result, it is totally natural that a model behavior may not be consistent with the expected behavior.
 
 <br>
 
-It is a vital problem because adverse correlations that encode task specifics cause the unpredictable model behavior on data even slightly different than used in a training.
-In contrast to SOTA models, the model working in the real-world application is exposed to process data changing in time.
-If we do not test and explain model behaviors (and do not fix model weaknesses), the performance of the served model is unstable and likely starts to decline.
+This is a fundamental problem because adverse correlations that encode the task specifics 
+can cause unpredictable model behavior on data even slightly different than that used in training.
+In contrast to SOTA models, a model working in a real-world application is exposed to data which changes in time.
+If we do not test and explain model behaviors (and do not fix model weaknesses), the performance of the served model can be unstable and will likely start to decline.
 And, it might be even hard to notice when a model is useless, and stops working at all (a distribution of predictions might remain unchanged).
 
 <br>
 
-In the article, we highlight the value of testing and explaining model behaviors.
-The tests quickly reveal severe limitations of the SOTA model e.g. an aspect condition does not work as one might expect (works as a feature).
-We would be in troubles if we were trying to use this model architecture in the real-world application.
-In general, it's hard to trust in the model reliability if there is no tests that examine model behaviors,
-especially when a huge model is fine-tuned on a modest dataset (as it is in down-stream NLP tasks).
+In this article, we have highlighted the value of testing and explaining model behaviors.
+The tests can quickly reveal severe limitations of the SOTA model e.g. an aspect condition does not work as one might expect (works as a feature).
+We would be in troubles if we tried to use this model architecture in a real-world application.
+In general, it's hard to trust model reliability if there is no tests that examine model behaviors,
+especially when a huge model is fine-tuned on a modest dataset (as it is with down-stream NLP tasks).
 
 <br>
 
-The tests assure us that the model works properly at the time of the deployment.
+Testing assures us that the model works properly at the time of the deployment.
 It is worth to monitor the model once it's served.
 The explanations of model decisions are extremely helpful to that end.
 We may benefit from explanations to understand an individual prediction 
 but also to infer and monitor the general characteristics of model reasoning.
-Even rough explanations help to recognize alarming behaviors.
-
-<br>
-
-This article gives an example of how to have more control over the ML model.
+Even rough explanations can help to recognize alarming behaviors.
+This article has given examples of how to have more control over the ML model.
 It is extremely important to keep an eye on model behaviors.
-Test and explain model behaviors.
 
 <br>
-
-
-
-
 
 
 ### References
 
+Introduction to the BERT interpretability:
+- Analysis Methods in Neural Language Processing: A Survey ([paper](https://arxiv.org/abs/1812.08951))
+- Are Sixteen Heads Really Better than One? ([paper](http://arxiv.org/abs/1905.10650))
+- A Primer in BERTology: What we know about how BERT works ([paper](http://arxiv.org/abs/2002.12327))
+- What Does BERT Look At? An Analysis of BERT's Attention ([paper](http://arxiv.org/abs/1906.04341))
+- Visualizing and Measuring the Geometry of BERT ([paper](http://arxiv.org/abs/1906.02715))
+- Is BERT Really Robust? A Strong Baseline for Natural Language Attack on Text Classification and Entailment ([paper](http://arxiv.org/abs/1907.11932))
+- Adversarial Training for Aspect-Based Sentiment Analysis with BERT ([paper](http://arxiv.org/abs/2001.11316))
+- Adv-BERT: BERT is not robust on misspellings! Generating nature adversarial samples on BERT ([paper](http://arxiv.org/abs/2003.04985))
+- exBERT: A Visual Analysis Tool to Explore Learned Representations in Transformers Models ([paper](http://arxiv.org/abs/1910.05276))
+- Does BERT Make Any Sense? Interpretable Word Sense Disambiguation with Contextualized Embeddings ([paper](http://arxiv.org/abs/1909.10430))
+- Attention is not Explanation ([paper](https://arxiv.org/abs/1902.10186))
+- Attention is not not Explanation ([paper](http://arxiv.org/abs/1908.04626))
+- Hierarchical interpretations for neural network predictions ([paper](https://arxiv.org/abs/1806.05337))
+- Analysis Methods in Neural NLP ([paper](https://www.mitpressjournals.org/doi/pdf/10.1162/tacl_a_00254))
+
 How to use language models in the Aspect-Based Sentiment Analysis:
 - Utilizing BERT for Aspect-Based Sentiment Analysis via Constructing Auxiliary Sentence (NAACL 2019)
-[[code]](https://github.com/HSLCY/ABSA-BERT-pair)[[paper]](https://www.aclweb.org/anthology/N19-1035/)
+([paper](https://www.aclweb.org/anthology/N19-1035/))
 - BERT Post-Training for Review Reading Comprehension and Aspect-based Sentiment Analysis (NAACL 2019)
-[[code]](https://github.com/howardhsu/BERT-for-RRC-ABSA)[[paper]](http://arxiv.org/abs/1908.11860)
+([paper](http://arxiv.org/abs/1908.11860))
 - Exploiting BERT for End-to-End Aspect-based Sentiment Analysis
-[[code]](https://github.com/lixin4ever/BERT-E2E-ABSA)[[paper]](http://arxiv.org/abs/1910.00883)
-
-Introduction to the BERT interpretability:
-- Are Sixteen Heads Really Better than One?
-[[code]](https://github.com/pmichel31415/are-16-heads-really-better-than-1)[[paper]](http://arxiv.org/abs/1905.10650)
-- A Primer in BERTology: What we know about how BERT works
-[[paper]](http://arxiv.org/abs/2002.12327)
-- What Does BERT Look At? An Analysis of BERT's Attention
-[[code]](https://github.com/clarkkev/attention-analysis)[[paper]](http://arxiv.org/abs/1906.04341)
-- Visualizing and Measuring the Geometry of BERT
-[[code]](https://github.com/PAIR-code/interpretability)[[paper]](http://arxiv.org/abs/1906.02715)
-- Is BERT Really Robust? A Strong Baseline for Natural Language Attack on Text Classification and Entailment
-[[paper]](http://arxiv.org/abs/1907.11932)
-- Adversarial Training for Aspect-Based Sentiment Analysis with BERT
-[[paper]](http://arxiv.org/abs/2001.11316)
-- Adv-BERT: BERT is not robust on misspellings! Generating nature adversarial samples on BERT
-[[paper]](http://arxiv.org/abs/2003.04985)
-- exBERT: A Visual Analysis Tool to Explore Learned Representations in Transformers Models
-[[code]](https://github.com/bhoov/exbert)[[paper]](http://arxiv.org/abs/1910.05276)
-- Does BERT Make Any Sense? Interpretable Word Sense Disambiguation with Contextualized Embeddings
-[[code]](https://github.com/uhh-lt/bert-sense)[[paper]](http://arxiv.org/abs/1909.10430)
-- Attention is not Explanation
-[[code]](https://github.com/successar/AttentionExplanation)[[paper]](https://arxiv.org/abs/1902.10186)
-- Attention is not not Explanation
-[[code]](https://github.com/sarahwie/attention)[[paper]](http://arxiv.org/abs/1908.04626)[[blog post]](https://medium.com/@yuvalpinter/attention-is-not-not-explanation-dbc25b534017)
-- Hierarchical interpretations for neural network predictions
-[[code]](https://github.com/csinva/hierarchical-dnn-interpretations)[[paper]](https://arxiv.org/abs/1806.05337)
-- Analysis Methods in Neural NLP
-[[code]](https://github.com/boknilev/nlp-analysis-methods)[[paper]](https://www.mitpressjournals.org/doi/pdf/10.1162/tacl_a_00254)
-- Visualization for Sequential Neural Networks with Attention
-[[code]](https://github.com/HendrikStrobelt/Seq2Seq-Vis)
-- NeuroX: Toolkit for finding and analyzing important neurons in neural networks
-[[code]](https://github.com/fdalvi/NeuroX)[[paper]](https://arxiv.org/abs/1812.09359)
-
-The State of the Art results:
-- A Multi-task Learning Model for Chinese-oriented Aspect Polarity Classification and Aspect Term Extraction
-[[code]](https://github.com/yangheng95/LCF-ATEPC)[[paper]](http://arxiv.org/abs/1912.07976)
-- Adapt or Get Left Behind: Domain Adaptation through BERT Language Model Finetuning for Aspect-Target Sentiment Classification
-[[code]](https://github.com/deepopinion/domain-adapted-atsc)[[paper]](http://arxiv.org/abs/1908.11860)
-- Adversarial Training for Aspect-Based Sentiment Analysis with BERT
-[[code]](https://github.com/akkarimi/Adversarial-Training-for-ABSA)[[paper]](https://arxiv.org/pdf/2001.11316.pdf)
-
-Other interesting:
-- Multi-Dimensional Explanation of Ratings from Reviews
-[[paper]](http://arxiv.org/abs/1909.11386)
-- Extracting Syntactic Trees from Transformer Encoder Self-Attentions
-[[paper]](http://aclweb.org/anthology/W18-5444)
-- Master Thesis: Transfer and Multitask Learning for Aspect-Based Sentiment Analysis Using the Google Transformer Architecture
-[[code]](https://github.com/felixSchober/ABSA-Transformer)
-- Create interactive textual heat maps for Jupiter notebooks
-[[code]](https://github.com/AndreasMadsen/python-textualheatmap)
-- A pyTorch implementation of the DeepMoji model: state-of-the-art deep learning model for analyzing sentiment, emotion, sarcasm etc
-[[code]](https://github.com/huggingface/torchMoji)
-- More you can find [here](https://github.com/jiangqn/Aspect-Based-Sentiment-Analysis).
+([paper](http://arxiv.org/abs/1910.00883))
