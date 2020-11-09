@@ -1,5 +1,5 @@
 
-** Do You Trust in Aspect-Based Sentiment Analysis? Testing and Explaining Model Behaviors **
+**Do You Trust in Aspect-Based Sentiment Analysis? Testing and Explaining Model Behaviors**
 #open-source #NLP #deep-learning #aspect-based-sentiment-classification
 
 
